@@ -3,7 +3,11 @@ title = "About"
 template = "info-page.html"
 +++
 
-![Me](../../img/genmoji.png)
+<img
+  src="../../img/genmoji.png"
+  alt="Tudor"
+  width="220"
+/>
 
 Hi, I'm Tudor. I'm a software engineer based in Romania. 
 
