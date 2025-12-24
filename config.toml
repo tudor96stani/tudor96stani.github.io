@@ -41,7 +41,7 @@ radion_title = "Notes on software"
 menu = [
     { name = "blog", url = "blog", trailing_slash = true },
     { name = "series", url = "series", trailing_slash = true },
-    { name = "tags", url = "tags", trailing_slash = true },
+    #{ name = "tags", url = "tags", trailing_slash = true },
     { name = "about", url = "about", trailing_slash = true },
     { name = "rss", url = "atom.xml", trailing_slash = false }
 ]
