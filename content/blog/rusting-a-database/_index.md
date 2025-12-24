@@ -6,6 +6,7 @@ transparent = true
 
 [extra]
 series = true
+post_listing_index_reversed = true  # Defaults to false if unset.
 +++
 
 This is a blog about my journey of trying to implement a relational database engine in Rust, while also learning the language. The main point here is to create a system that mimics as close as possible a real one, so as to better understand the way it works and thus become a better database engineer.

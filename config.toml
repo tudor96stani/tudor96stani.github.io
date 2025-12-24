@@ -27,6 +27,13 @@ include_content = true
 # Whether to do syntax highlighting
 # Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
 highlight_code = true
+highlight_theme = "css"  # Required for class-based highlighting
+
+# Specify theme(s) for dark and light modes
+highlight_themes_css = [
+  { theme = "one-dark", filename = "syntax/syntax-theme-dark.css" },
+  { theme = "gruvbox-dark", filename = "syntax/syntax-theme-light.css" },
+]
 
 [extra]
 radion_title = "Notes on software"
@@ -34,7 +41,62 @@ radion_title = "Notes on software"
 menu = [
     { name = "blog", url = "blog", trailing_slash = true },
     { name = "series", url = "series", trailing_slash = true },
-    #{ name = "tags", url = "tags", trailing_slash = true },
+    { name = "tags", url = "tags", trailing_slash = true },
     { name = "about", url = "about", trailing_slash = true },
     { name = "rss", url = "atom.xml", trailing_slash = false }
 ]
+
+github = "https://github.com/tudor96stani/"
+remote_repository_url = "https://github.com/tudor96stani/trdb-blog"
+remote_repository_git_platform = "auto"
+remote_repository_branch = "main"
+show_remote_changes = true
+show_remote_source = true
+
+codeblock = true
+
+enable_search = true
+
+theme_switcher = true
+
+toc = true
+
+show_previous_next_article_links = true
+invert_previous_next_article_links = true
+
+favicon = "img/favicon-32x32.png"
+
+quick_navigation_buttons = true
+
+copy_button = true
+
+socials = [
+    { name = "github", url = "https://github.com/tudor96stani", icon = "github" },
+ #   { name = "soundcloud", url = "https://soundcloud.com/oskerwyld", icon = "soundcloud" },
+ #   { name = "instagram", url = "https://instagram.com/oskerwyld", icon = "instagram" },
+ #   { name = "youtube", url = "https://youtube.com/@oskerwyld", icon = "youtube" },
+ #   { name = "spotify", url = "https://open.spotify.com/artist/5Hv2bYBhMp1lUHFri06xkE", icon = "spotify" },
+]
+feed_icon = true
+show_author = true
+
+[extra.giscus]
+enabled_for_all_posts = true
+automatic_loading = true
+repo = "tudor96stani/tudor96stani.github.io"
+repo_id = "R_kgDOQuOQtQ"
+category = "General"
+category_id = "DIC_kwDOQuOQtc4C0MyW"
+mapping = "pathname"
+strict_title_matching = 0  # 1 to enable, 0 to disable.
+enable_reactions = 1  # 1 to enable, 0 to disable.
+comment_box_above_comments = true
+light_theme = "noborder_light"
+dark_theme = "noborder_dark"
+lang = ""  # Leave blank to match the page's language.
+lazy_loading = true
+
+[extra.analytics]
+service = "goatcounter"
+id = "tudor96stani"
+self_hosted_url = ""

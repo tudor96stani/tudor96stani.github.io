@@ -3,6 +3,8 @@ title = "About"
 template = "info-page.html"
 +++
 
+![Me](../../img/genmoji.png)
+
 Hi, I'm Tudor. I'm a software engineer based in Romania. 
 
 I've been working as a dotnet backend developer since mid 2018, in the medical software industry.
