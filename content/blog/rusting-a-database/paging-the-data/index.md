@@ -3,7 +3,7 @@ title = "Paging the data"
 date = 2025-12-11T15:34:03+02:00
 slug = "paging-the-data"
 description = "An overview of the concept of slotted pages in a storage engine along with details on how it was implemented"
-tags = ["data-page", "slotted-page"]
+tags = ["slotted-page", "storage-system"]
 draft = false
 +++
 ## Intro
