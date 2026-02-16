@@ -50,8 +50,6 @@ The first one is relatively straightforward: instead of attempting to have a sin
 
 Interior mutability, a pattern that allows you to change the internal state of a type through a shared reference, is used in both structures and provides a way of updating the contents of the buffer manager via `&BufferManager`, without the need to borrow it mutably (`&mut BufferManager`). Since we are dealing with a multithreaded context, `Mutex` and `RwLock` (in combination with `Arc`) were used. 
 
-see : [a]
-
 The following diagram shows the high level design:
 ![buffer manager structure](../../../img/buffer-manager.png)
 ### Frames
@@ -74,7 +72,7 @@ struct BufferFrame {
 ```
 The `BufferFrame` is a simple structure that **owns** the data page and protects it with a `RwLock`. This means that we never need to borrow the frame mutably in order to change the content of the underlying page. The same logic applies for the `PageID`, the only difference being that the `Option` allows us to flag that the frame is empty. 
 
-Thanks to this, the buffer can only own a `Vec<BufferFrame>`, without the need for additional thread protection. This is based on the fact that access to a `Vec` is thread-safe as long as the vector itself is not mutated (which we're not doing): a `Vec<T,A>` is `Sync` if `T, A: Sync` and `Send` if `T, A: Send` - (Rust Project, n.d.)
+Thanks to this, the buffer can only own a `Vec<BufferFrame>`, without the need for additional thread protection. This is based on the fact that access to a `Vec` is thread-safe as long as the vector itself is not mutated (which we're not doing): a `Vec<T,A>` is `Sync` if `T, A: Sync` and `Send` if `T, A: Send` [\[2\]](/blog/rusting-a-database/storage-manager-the-buffer/#references)
 
 At startup, a fixed-size `Vec` is allocated, and each frame instantiated with default values: `None` for `page_id`, a zeroed-out page, `0` for `pin_count` and `false` for `dirty`.
 Worth noting, **a zeroed-out page** does not mean the lack of one - in each frame, we have an instantiated `Page` struct with all of its 4096 bytes set to zero.
@@ -236,7 +234,7 @@ The use of the `PageEntry` with the two states (`Loading` and `Ready(FrameId)`) 
 **Note**: here, it is important in the 1st thread to obtain the read/write guard on the page before updating the map and notifying the waiters. Otherwise, the 2nd thread might wake up and snatch the lock on the page from the first thread which did all the work of reading the data from the disk.
 
 ### Storage access times
-This table shows the access times for different storage/memory components, with an equivalent conversion in a more tangible unit of time. I find the table very relevant as it highlights just how slow disk reads are, especially compared to RAM and the CPU caches. 
+This table shows the access times for different storage/memory components, with an equivalent conversion in a more tangible unit of time. I find the table very relevant as it highlights just how slow disk reads are, especially compared to RAM and the CPU caches
 
 | Source          | Duration     | Equivalent duration |
 | --------------- | ------------ | ------------------- |
@@ -247,8 +245,8 @@ This table shows the access times for different storage/memory components, with 
 | HDD             | 10_000_000ns | 16.5 weeks          |
 | Network storage | 30_000_000ns | 11.4 months         |
 
-Source: (Pavlo, 2022, slide 9)
+Source: [\[1\]](/blog/rusting-a-database/storage-manager-the-buffer/#references)
 
 ## References
-- Pavlo, A. (2022). *Database systems (15-445/645): 03 database storage part 1*. Carnegie Mellon University. [Lecture slides](https://15445.courses.cs.cmu.edu/fall2022/slides/03-storage1.pdf)
-- Rust Project. (n.d.). _impl Send for Vec<T, A>_ in _Vec Struct_ — Rust Standard Library documentation. Rust Programming Language. [Site](https://doc.rust-lang.org/std/vec/struct.Vec.html#impl-Send-for-Vec%3CT%2CA%3E)
+1.  Pavlo, A. (2022). *Database systems (15-445/645): 03 database storage part 1*. Carnegie Mellon University. [Lecture slides](https://15445.courses.cs.cmu.edu/fall2022/slides/03-storage1.pdf)
+2. Rust Project. (n.d.). _impl Send for Vec<T, A>_ in _Vec Struct_ — Rust Standard Library documentation. Rust Programming Language. [Site](https://doc.rust-lang.org/std/vec/struct.Vec.html#impl-Send-for-Vec%3CT%2CA%3E)
