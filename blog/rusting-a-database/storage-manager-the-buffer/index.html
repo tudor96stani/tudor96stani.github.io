@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'self';font-src 'self' data:;img-src 'self' https://* data:;media-src 'self';style-src 'self';frame-src player.vimeo.com https://www.youtube-nocookie.com giscus.app;connect-src 'self' tudor96stani.goatcounter.com/count;script-src 'self' gc.zgo.at  giscus.app 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base" content="https://tudor96stani.com">
+
+    
+    <title>
+Notes on software • Storage manager - the buffer</title>
+
+    
+    
+        <link rel="icon" type="image/png" href="https://tudor96stani.com/img/favicon-32x32.png"/>
+    
+    
+
+    
+    
+        
+            
+            
+                
+                    <link rel="alternate" type="application/atom+xml" title="Notes on software - Atom Feed" href="https://tudor96stani.com/atom.xml">
+                
+            
+        
+    
+
+    
+    
+    
+        
+            <link rel="stylesheet" href="https://tudor96stani.com/custom_subset.css?h=0b9535a28bc3d5bf2321">
+        
+    
+
+    
+        <link rel="stylesheet" href="https://tudor96stani.com/main.css?h=3716ab3457d2dd050b3c" />
+
+    <meta name="color-scheme" content="light dark" />
+        <meta name="description" content="An overview of the implementation for the buffer manager, one of the three major services of the storage subsystems." />
+        <meta property="og:description" content="An overview of the implementation for the buffer manager, one of the three major services of the storage subsystems." />
+
+    
+
+    <meta property="og:title" content="Storage manager - the buffer" />
+    <meta property="og:type" content="article" />
+
+    
+<meta property="og:locale" content="en_GB" />
+
+    <meta property="og:url" content="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;storage-manager-the-buffer&#x2F;" /><meta property="og:site_name" content="Notes on software">
+        <noscript><link rel="stylesheet" href="https://tudor96stani.com/no_js.css"/></noscript>
+        <script type="text/javascript" src="https://tudor96stani.com/js/initializeTheme.min.js"></script>
+        <script defer src="https://tudor96stani.com/js/themeSwitcher.min.js"></script>
+
+
+
+
+    
+    
+    <script async
+    
+        data-goatcounter="https://tudor96stani.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"
+        
+    ></script>
+    
+
+
+
+        <script defer src="https://tudor96stani.com/js/searchElasticlunr.min.js?h=3626c0ef99daa745b31e"></script>
+
+        
+    
+</head>
+
+
+<body>
+    <a href="#main-content" id="skip-link">Skip to content</a>
+    <header>
+    <nav class="navbar">
+        <div class="nav-title">
+            <a class="home-title" href="https://tudor96stani.com/">Notes on software</a>
+        </div>
+            <div class="nav-navs">
+                <ul>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/blog/">blog
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/about/">about
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/atom.xml">rss
+                                </a>
+                            </li>
+                        <li class="menu-icons-container">
+                        <ul class="menu-icons-group">
+                            <li class="js menu-icon">
+                                <div role="button" tabindex="0" id="search-button" class="search-icon interactive-icon" title="Click or press $SHORTCUT to open search" aria-label="Click or press $SHORTCUT to open search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                                        <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                                    </svg>
+                                </div>
+                            </li>
+
+                            
+                            
+
+                            <li class="theme-switcher-wrapper js"><div
+        title="Toggle dark&#x2F;light mode"
+        class="theme-switcher"
+        tabindex="0"
+        role="button"
+        aria-label="Toggle dark mode"
+        aria-pressed="false">
+    </div><div
+        title="Reset mode to default"
+        class="theme-resetter arrow"
+        tabindex="0"
+        role="button"
+        aria-hidden="true"
+        aria-label="Reset mode to default">
+    </div>
+
+</li>
+</ul>
+                    </li>
+                </ul>
+            </div>
+        
+    </nav>
+</header>
+
+    <div class="content" id="main-content">
+
+        
+        
+
+
+
+
+
+<main>
+    <article class="h-entry">
+        <h1 class="p-name article-title">
+            Storage manager - the buffer
+        </h1>
+        <a class="u-url u-uid" href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/"></a>
+
+        <ul class="meta"><li>By <span class="p-author">Tudor Stanila</span></li><span class="hidden p-author h-card">
+<a rel="author" href="https:&#x2F;&#x2F;tudor96stani.com" class="u-url " title="Tudor Stanila">Tudor Stanila</a>
+</span>
+<li><time class="dt-published" datetime="2026-02-15T12:00:03+02:00"><span class='separator' aria-hidden='true'>•</span>15th Feb 2026</time></li><li title="2652 words"><span class='separator' aria-hidden='true'>•</span>14 min read</li>
+        </ul>
+            
+
+<div class="toc-container">
+    
+        <h3>Table of Contents</h3>
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#intro">Intro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-buffer">The buffer</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-requirements">The requirements</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-old-design">The old design</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-new-solution">The new solution</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#frames">Frames</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#page-map">Page map</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#requesting-pages">Requesting pages</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#what-this-design-achieves">What this design achieves</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#conclusions-and-lessons-learned">Conclusions and lessons learned</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#additional-resources">Additional resources</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#race-conditions">Race conditions</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#1-two-threads-look-for-an-empty-frame">1. Two threads look for an empty frame</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#2-1-one-right-after-the-other-two-threads-want-to-read-the-same-page">2.1 One right after the other, two threads want to read the same page</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#2-2-two-threads-want-to-load-the-same-page-in-different-frames">2.2 Two threads want to load the same page in different frames</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#storage-access-times">Storage access times</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#references">References</a>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+        
+            <p class="p-summary" hidden>An overview of the implementation for the buffer manager, one of the three major services of the storage subsystems.</p><section class="e-content body">
+    
+<h2 id="intro">Intro</h2>
+<p>Having finished at least a preliminary implementation of the slotted pages, it is time to move on to the next part of the storage subsystem: its managers.
+In the original implementation, there were three of them:</p>
+<ul>
+<li>File manager: handling the I/O with the file system</li>
+<li>Buffer manager: implementing the page buffer</li>
+<li>Storage manager: providing access into the storage system
+The approach for Rust will be similar — the plan is to have the same three services. The lesson learned from Java being that the storage manager in particular can easily slip into having more responsibilities than it should. As a general rule, <strong>no service in the storage subsystem should deal with anything more granular than a page</strong>.</li>
+</ul>
+<h2 id="the-buffer">The buffer</h2>
+<p>While the storage manager provides access to the entire module, the buffer manager is more interesting and far more important; therefore, I have started with it.</p>
+<p>The page buffer (or page cache) is one of the more important components of the engine. Because disk access is much slower than RAM, maintaining the active pages in an in-memory buffer is critical for the performance of the system. It is also an important player in the implementation of the whole <em>steal/no force</em> ARIES algorithm and the entire logging &amp; transactionality approach - none of which I will cover in this post, as they are complex topics that require their own separate analysis.</p>
+<p>For the purpose of this stage, though, the buffer manager plays a simpler role: caching data pages after they have been read from disk and providing callers access to them when requested. For now, we will keep to a minimum more advanced features like dirty page tracking, automatic flushing, pin counting and real eviction policies. These will be implemented later, the goal right now being to implement a buffer manager that is extensible, stable, and meets several requirements.</p>
+<h2 id="the-requirements">The requirements</h2>
+<p>Before designing the buffer, I needed to clarify what the expectations of it are. They can be summarized as follows:</p>
+<ul>
+<li>the buffer should be the owner of the cached data pages and the only place in memory where the pages exist (i.e. do not allow page data to be cloned/duplicated/copied)</li>
+<li>callers request a page by its <code>PageID</code> and receive a reference to the page data</li>
+<li>the buffer is responsible for negotiating with the <code>FileManager</code> to trigger disk reads when a requested page is not found in the cache</li>
+<li>the implementation will allow concurrent access in a classic R/W locking mechanism:
+<ul>
+<li>read access to a page can be provided to any number of threads</li>
+<li>write access to a page is exclusive</li>
+<li>read/write access is controlled at the page level, not the entire buffer (multiple threads can obtain write access at the same time, provided they are working with different data pages)</li>
+</ul>
+</li>
+</ul>
+<h2 id="the-old-design">The old design</h2>
+<p>I started off with a design similar to the one in the Java implementation: the buffer contains a <code>HashMap&lt;PageId, Page&gt;</code>. Given that no concurrent implementation was present in the Java version, this worked fine.</p>
+<p>This time around, besides the desire to design the buffer with concurrency in mind, I was also limited by the constraints imposed by the borrow checker. While defining a <code>HashMap&lt;PageId, Page&gt;</code> is possible, there were several problems with this approach:</p>
+<ul>
+<li>not thread safe - we would need some approach that allows concurrency:
+<ul>
+<li>if we only protected the pages (<code>HashMap&lt;PageId, RwLock&lt;Page&gt;&gt;</code>), access to the map itself would still not be thread safe</li>
+<li>if we also protected the map (<code>RwLock&lt;HashMap&lt;PageId, RwLock&lt;&lt;Page&gt;&gt;&gt;</code>), we would also bottleneck access to it - no thread could access it to read page X while another thread was attempting to insert page Y</li>
+</ul>
+</li>
+<li>mutability - since even read operations can require mutation (in case of a cache miss, read from disk and insert in cache), the borrow checker will heavily block our attempts - every operation would require a mutable borrow of the map, which realistically is not doable.</li>
+</ul>
+<h2 id="the-new-solution">The new solution</h2>
+<p>In order to solve all the problems caused by the old approach, I did the following:</p>
+<ul>
+<li>separate the task of caching pages from keeping track of what pages are cached</li>
+<li>use interior mutability</li>
+</ul>
+<p>The first one is relatively straightforward: instead of attempting to have a single data structure that both owns the pages and keeps track of them, I split the responsibilities over two structures: a pure cache and a page map.</p>
+<p>Interior mutability, a pattern that allows you to change the internal state of a type through a shared reference, is used in both structures and provides a way of updating the contents of the buffer manager via <code>&amp;BufferManager</code>, without the need to borrow it mutably (<code>&amp;mut BufferManager</code>). Since we are dealing with a multithreaded context, <code>Mutex</code> and <code>RwLock</code> (in combination with <code>Arc</code>) were used.</p>
+<p>The following diagram shows the high level design:
+<img src="../../../img/buffer-manager.png" alt="buffer manager structure" /></p>
+<h3 id="frames">Frames</h3>
+<p>To achieve this desired result, a different approach was taken compared to the Java implementation: instead of thinking of the buffer as a collection in which we place new pages, we can see it as a pre-allocated chunk of memory in which pages are loaded from disk. This is done through a fixed-size block of memory allocated at startup and comprised of multiple <strong>frames</strong>, each frame being able to store a single page.</p>
+<p>This has an important consequence: the cache structure itself is never mutated after construction. Its size stays constant regardless of the content it stores and how it is updated throughout its lifetime.</p>
+<p>Let's take a look at this part of the implementation:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">BufferManager</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">frames</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Vec</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>BufferFrame<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">BufferFrame</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">page</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust">RwLock<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>Page<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">page_id</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust">RwLock<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Option</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>PageID<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">pin_count</span><span class="z-punctuation z-separator z-type z-rust">:</span> AtomicU32,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">dirty</span><span class="z-punctuation z-separator z-type z-rust">:</span> AtomicBool
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<p>The <code>BufferFrame</code> is a simple structure that <strong>owns</strong> the data page and protects it with a <code>RwLock</code>. This means that we never need to borrow the frame mutably in order to change the content of the underlying page. The same logic applies for the <code>PageID</code>, the only difference being that the <code>Option</code> allows us to flag that the frame is empty.</p>
+<p>Thanks to this, the buffer can only own a <code>Vec&lt;BufferFrame&gt;</code>, without the need for additional thread protection. This is based on the fact that access to a <code>Vec</code> is thread-safe as long as the vector itself is not mutated (which we're not doing): a <code>Vec&lt;T,A&gt;</code> is <code>Sync</code> if <code>T, A: Sync</code> and <code>Send</code> if <code>T, A: Send</code> <a href="/blog/rusting-a-database/storage-manager-the-buffer/#references">[2]</a></p>
+<p>At startup, a fixed-size <code>Vec</code> is allocated, and each frame instantiated with default values: <code>None</code> for <code>page_id</code>, a zeroed-out page, <code>0</code> for <code>pin_count</code> and <code>false</code> for <code>dirty</code>.
+Worth noting, <strong>a zeroed-out page</strong> does not mean the lack of one - in each frame, we have an instantiated <code>Page</code> struct with all of its 4096 bytes set to zero.
+When a page is requested, it is read from disk <strong>directly</strong> into the <code>frame.page.data</code> byte array, thus populating the frame without mutating the overall data structure.
+<strong>Note</strong>: the <code>page_id</code> field of the frame is only used as an indicator that the frame is occupied, <strong>not</strong> as a mechanism of keeping track of what pages are currently in the cache.</p>
+<h3 id="page-map">Page map</h3>
+<p>Once we have sorted out how to have the buffer own and store the data pages themselves, we need a way to determine which pages we actually have in the cache.
+For this, we employ a new field and some data types:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">BufferManager</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">page_map</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust">RwLock<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-generic z-rust">HashMap<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>PageId, <span class="z-meta z-generic z-rust">Arc<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>PageEntry<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">PageEntry</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">state</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust">Mutex<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>PageState<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">cond_var</span><span class="z-punctuation z-separator z-type z-rust">:</span> Condvar
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-meta z-enum z-rust"><span class="z-storage z-type z-enum z-rust">enum</span> <span class="z-entity z-name z-enum z-rust">PageState</span> <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-enum z-rust"><span class="z-meta z-block z-rust">	Loading<span class="z-punctuation z-separator z-rust">,</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-enum z-rust"><span class="z-meta z-block z-rust">	Ready<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span>FrameId</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-enum z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-storage z-type z-type z-rust">type</span> <span class="z-entity z-name z-type z-rust">FrameId</span> <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-storage z-type z-rust">usize</span>
+</span></code></pre>
+<p>I'll break this down bottom-up:
+A frame is identified by its index in the <code>Vec</code>, thus a <code>FrameId</code> is just a nicer way of defining that <code>usize</code> to make it clearer.</p>
+<p>The <code>PageState</code> enum tells us whether the page is in the buffer, ready to be accessed at the given <code>FrameId</code>, or if it is currently being read from disk. See the <a href="/blog/rusting-a-database/storage-manager-the-buffer/#2-1-one-right-after-the-other-two-threads-want-to-read-the-same-page">Race conditions 2.1</a> for an explanation of why this is needed.</p>
+<p>The <code>PageEntry</code> is used as the value in the <code>page_map</code>. The use of the <code>Mutex</code> and <code>Condvar</code> is also described in the <a href="/blog/rusting-a-database/storage-manager-the-buffer/#2-2-two-threads-want-to-load-the-same-page-in-different-frames">Race conditions 2.2</a> section. Suffice to say for both that they protect the resources during concurrent access.</p>
+<p>The <code>page_map</code> field is a map from <code>PageID</code> to its corresponding <code>PageEntry</code>. Here, we do need to have a <code>RwLock</code> protecting the map, as we will be mutating it during runtime: when a new page is loaded into a frame, we update the map with a new key-value pair.
+The value of the map is wrapped in an <code>Arc</code> to limit the duration of the lock on the entire collection, allowing us to do the following:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-storage z-type z-rust">let</span> entry <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span><span class="z-source z-rust"><span class="z-meta z-block z-rust">    <span class="z-storage z-type z-rust">let</span> map <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-variable z-language z-rust">self</span><span class="z-punctuation z-accessor z-dot z-rust">.</span>page_table<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">read</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">unwrap</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+</span></span><span class="z-source z-rust"><span class="z-meta z-block z-rust">    map<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">get</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>page_id</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">cloned</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span>
+</span></span><span class="z-source z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span><span class="z-punctuation z-terminator z-rust">;</span> <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> map lock dropped here
+</span></span></code></pre>
+<p>By cloning the <code>Arc</code>, we can drop the lock on the map and allow other threads to access it if needed. This way, even if we do need to lock the whole collection while mutating it, we can keep the locks as short as possible.</p>
+<p>Without the <code>Arc</code>, <code>map.get</code> would have given us a <code>&amp;PageEntry</code> that was tied to the guard from the <code>RwLock</code>.</p>
+<h3 id="requesting-pages">Requesting pages</h3>
+<p>So far we have covered the way the buffer is defined in terms of state, but what about behavior? How does this design affect the functional implementation?</p>
+<p>The three main operations I will be covering are: requesting a page to be read, requesting a page to be updated and requesting a new page. The buffer will, of course, offer more functionality in the future, but these are the important ones.</p>
+<p>The operations are defined as follows:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> Retrieves a page from the buffer pool based on its page ID.
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> If the page cannot be found in the buffer, it is first loaded from disk, cached, then returned.
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span>
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> # Params
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> - `page_id`: The identifier of the page to be retrieved.
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span>
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> # Returns
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> A `Result` where the `Ok` contains a `PageReadGuard`. A `PageReadGuard` encapsulates the latch
+</span></span><span class="z-source z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> needed to access the underlying `&amp;Page`.
+</span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">read_page</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span><span class="z-keyword z-operator z-rust">&amp;</span><span class="z-variable z-parameter z-rust">self</span>, <span class="z-variable z-parameter z-rust">page_id</span><span class="z-punctuation z-separator z-rust">:</span> PageId</span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Result</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-generic z-rust">PageReadGuard<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>&#39;<span class="z-keyword z-operator z-rust">_</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>, BufferError<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-function z-return-type z-rust">
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-function z-return-type z-rust">    </span><span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> Retrieves a mutable page from the buffer pool based on its page ID.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> If the page cannot be found in the buffer, it is first loaded from disk, cached, then returned.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> # Params
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> - `page_id`: The identifier of the page to be retrieved.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> # Returns
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> A `Result` where the `Ok` contains a `PageWriteGuard`. A `PageWriteGuard` encapsulates the latch
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> needed to mutably access the underlying `&amp;Page`.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">read_page_mut</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span><span class="z-keyword z-operator z-rust">&amp;</span><span class="z-variable z-parameter z-rust">self</span>, <span class="z-variable z-parameter z-rust">page_id</span><span class="z-punctuation z-separator z-rust">:</span> PageId</span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Result</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-generic z-rust">PageWriteGuard<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>&#39;<span class="z-keyword z-operator z-rust">_</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>, BufferError<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-function z-return-type z-rust">
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-function z-return-type z-rust">    </span><span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> Finds a free frame and claims it for a new page with the given page ID.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> Note that the frame might contain either a zeroed-page or a previous page that was flushed.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> Regardless, the caller is responsible for initializing the page and zero-ing it out.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> # Params
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> - `page_id`: the ID for the new page.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> # Returns
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> `PageWriteGuard` instance with write-access to the underlying page.
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">allocate_new_page</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span><span class="z-keyword z-operator z-rust">&amp;</span><span class="z-variable z-parameter z-rust">self</span>, <span class="z-variable z-parameter z-rust">page_id</span><span class="z-punctuation z-separator z-rust">:</span> PageId</span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Result</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-generic z-rust">PageWriteGuard<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>&#39;<span class="z-keyword z-operator z-rust">_</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>, BufferError<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>
+</span></span></span></code></pre>
+<p>The methods return custom data types, defined as follows:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">PageReadGuard</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> The underlying `RwLockReadGuard` which will be dereferenced to `&amp;Page`
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-storage z-modifier z-rust">pub</span> <span class="z-variable z-other z-member z-rust">guard</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust">RwLockReadGuard<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span>, Page<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-storage z-type z-impl z-rust">impl</span></span><span class="z-meta z-impl z-rust"><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span><span class="z-meta z-impl z-rust"> Deref <span class="z-keyword z-other z-rust">for</span></span><span class="z-meta z-impl z-rust"> <span class="z-entity z-name z-impl z-rust">PageReadGuard</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span> </span><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust">    <span class="z-keyword z-operator z-range z-rust">...</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">PageWriteGuard</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-comment z-line z-documentation z-rust"><span class="z-punctuation z-definition z-comment z-rust">///</span> The underlying `RwLockWriteGuard` which will be dereferenced to `&amp;Page`
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-storage z-modifier z-rust">pub</span> <span class="z-variable z-other z-member z-rust">guard</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust">RwLockWriteGuard<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span>, Page<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-storage z-type z-impl z-rust">impl</span></span><span class="z-meta z-impl z-rust"><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span><span class="z-meta z-impl z-rust"> Deref <span class="z-keyword z-other z-rust">for</span></span><span class="z-meta z-impl z-rust"> <span class="z-entity z-name z-impl z-rust">PageWriteGuard</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span> </span><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-keyword z-operator z-range z-rust">...</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-storage z-type z-impl z-rust">impl</span></span><span class="z-meta z-impl z-rust"><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span><span class="z-meta z-impl z-rust"> DerefMut <span class="z-keyword z-other z-rust">for</span></span><span class="z-meta z-impl z-rust"> <span class="z-entity z-name z-impl z-rust">PageWriteGuard</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span> </span><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-keyword z-operator z-range z-rust">...</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<p>Remember that each <code>BufferFrame</code> protects the underlying <code>Page</code> with a <code>RwLock</code>. To get through the lock, you need to own a <code>RwLockReadGuard</code> or <code>RwLockWriteGuard</code>. Therefore, the buffer cannot hand out references to the <code>Page</code> itself:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> if the buffer were defined as
+</span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">read_page</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span><span class="z-keyword z-operator z-rust">&amp;</span><span class="z-variable z-parameter z-rust">self</span>, <span class="z-variable z-parameter z-rust">page_id</span><span class="z-punctuation z-separator z-rust">:</span>PageId</span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-keyword z-operator z-rust">&amp;</span>Page</span> </span><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">	<span class="z-storage z-type z-rust">let</span> frame_id <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-variable z-language z-rust">self</span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">find_frame</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span>page_id</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">	<span class="z-storage z-type z-rust">let</span> page <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-variable z-language z-rust">self</span><span class="z-punctuation z-accessor z-dot z-rust">.</span>frames<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span>frame_id<span class="z-punctuation z-section z-group z-end z-rust">]</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">read</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">unwrap</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span> 
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">	<span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> a guard has been obtained in the line above, allowing access into the RwLock
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">	<span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>page
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span> <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> the guard has been dropped here, so the &amp;Page is no longer valid
+</span></span></code></pre>
+<p>It can, however, go into the frame, request a guard from the lock and return that to the caller. This way, as long as the caller keeps ownership of the guard, it has access to the page.
+And since this is a <code>RwLock</code>, it automatically handles shared and exclusive access.
+The implementation of <code>Deref</code> and <code>DerefMut</code> means we can invoke methods of the <code>Page</code> directly on the guard.</p>
+<h2 id="what-this-design-achieves">What this design achieves</h2>
+<p>If we look again at the requirements, we can see that this design satisfies them:</p>
+<ul>
+<li>buffer is owner of a <code>Vec&lt;BufferFrame&gt;</code>, where each <code>BufferFrame</code> owns the page</li>
+<li>callers receive a guard that is dereferenced to a <code>&amp;Page</code> or <code>&amp;mut Page</code></li>
+<li>buffer reads pages into memory when they are not already cached</li>
+<li>concurrent R/W access to the pages is provided and thread safe
+<ul>
+<li>multiple <code>RwLockReadGuard</code>s are allowed at once</li>
+<li>a single guard of type <code>RwLockWriteGuard</code> is allowed</li>
+<li>multiple locks on different pages are allowed at the same time. The only serialization of operations is done when mutating the <code>page_map</code>, but through <code>Arc&lt;PageEntry&gt;</code> we can keep these locks as short as possible</li>
+</ul>
+</li>
+</ul>
+<p><strong>Note</strong>: here I have used the term locks multiple times. In reality, these would be more correctly called <strong>latches</strong> - primitive synchronization mechanisms that control access to a physical resource. Down the line, we will implement a <strong>LockManager</strong>, which will handle logical locks at object level during the execution of a transaction, while the latches will maintain the consistency of the in-memory objects and prevent corruption during multithreaded operations.</p>
+<h2 id="conclusions-and-lessons-learned">Conclusions and lessons learned</h2>
+<p>The implementation of the buffer is still in a very premature state - only the most basic of features have been done. However, I think it provides a pretty good foundation for what will come next. I’ve done a bit of testing (both automated tests and manual testing) and the concurrency seems to be handled correctly, allowing multiple threads to access the same page.</p>
+<p>One of the interesting aspects has been the difference in approaches I was forced to take compared to the Java implementation - in there, the buffer itself was a very direct implementation of a <code>HashMap</code>, with little extra thought being given to it in terms of data structures or actual definition. Here, because the borrow checker did not allow me to just do the first thing that crossed my mind, I needed to stop for a moment and actually think about how I wanted this component to work - who should own the pages, where to give out references and what rules to apply to the entire flow. While this has taken a far longer time, I'm pretty confident the result is more robust. And I'm not saying this to preach Rust necessarily - the same solution could be done in any language, <strong>if you choose to do it</strong>, whereas in Rust you are somewhat forced to do it. But coming from C#, this is still an interesting aspect for me.</p>
+<h2 id="additional-resources">Additional resources</h2>
+<h3 id="race-conditions">Race conditions</h3>
+<p>As mentioned, I identified a few possible <strong>edge case</strong> race conditions that shaped the design:</p>
+<h4 id="1-two-threads-look-for-an-empty-frame">1. Two threads look for an empty frame</h4>
+<p>We must ensure that if two threads are searching for an empty frame in which to load a page, they do not choose the same one.
+<strong>Solution</strong>
+When going through the frames, write-lock the one you find empty and set its <code>page_id</code> from the start. This way, you can release the lock without worrying that others might use it before you get the chance to load the page.</p>
+<h4 id="2-1-one-right-after-the-other-two-threads-want-to-read-the-same-page">2.1 One right after the other, two threads want to read the same page</h4>
+<p>The first thread sets the <code>page_id</code> on the frame, but before it has the chance to load the page, the other attempts to read the page.
+<strong>Solution</strong>
+To determine if a page is cached, always consult the <code>page_map</code>, never the <code>frames.page_id</code>. Additionally, publish in the <code>page_map</code> that the page is available only after successfully loading it from disk.</p>
+<h4 id="2-2-two-threads-want-to-load-the-same-page-in-different-frames">2.2 Two threads want to load the same page in different frames</h4>
+<p>Here, we need to ensure that the 2nd thread can differentiate between <em>page not in cache</em> and <em>page being loaded into cache</em>.
+<strong>Solution</strong>
+The use of the <code>PageEntry</code> with the two states (<code>Loading</code> and <code>Ready(FrameId)</code>) allows a thread to signal to others that it is currently reading the page from disk. It must insert the pair in the <code>page_map</code> before starting the I/O and set it to <code>Loading</code>. The second thread will notice that and wait on the <code>Mutex</code> from the <code>PageEntry</code>. Once the loader thread has finished reading the data from disk, it can update the state to <code>Ready(FrameId)</code> and notify the waiting 2nd thread. Through the use of a <code>Condvar</code>, the 2nd thread was not busy-waiting or consuming CPU while waiting for the event to occur.
+<strong>Note</strong>: here, it is important in the 1st thread to obtain the read/write guard on the page before updating the map and notifying the waiters. Otherwise, the 2nd thread might wake up and snatch the lock on the page from the first thread which did all the work of reading the data from the disk.</p>
+<h3 id="storage-access-times">Storage access times</h3>
+<p>This table shows the access times for different storage/memory components, with an equivalent conversion in a more tangible unit of time. I find the table very relevant as it highlights just how slow disk reads are, especially compared to RAM and the CPU caches</p>
+<table><thead><tr><th>Source</th><th>Duration</th><th>Equivalent duration</th></tr></thead><tbody>
+<tr><td>L1 cache</td><td>0.5 ns</td><td>0.5 sec</td></tr>
+<tr><td>L2 cache</td><td>7ns</td><td>7 sec</td></tr>
+<tr><td>DRAM</td><td>100ns</td><td>100 sec</td></tr>
+<tr><td>SSD</td><td>150_000ns</td><td>1.7 days</td></tr>
+<tr><td>HDD</td><td>10_000_000ns</td><td>16.5 weeks</td></tr>
+<tr><td>Network storage</td><td>30_000_000ns</td><td>11.4 months</td></tr>
+</tbody></table>
+<p>Source: <a href="/blog/rusting-a-database/storage-manager-the-buffer/#references">[1]</a></p>
+<h2 id="references">References</h2>
+<ol>
+<li>Pavlo, A. (2022). <em>Database systems (15-445/645): 03 database storage part 1</em>. Carnegie Mellon University. <a href="https://15445.courses.cs.cmu.edu/fall2022/slides/03-storage1.pdf">Lecture slides</a></li>
+<li>Rust Project. (n.d.). <em>impl Send for Vec&lt;T, A&gt;</em> in <em>Vec Struct</em> — Rust Standard Library documentation. Rust Programming Language. <a href="https://doc.rust-lang.org/std/vec/struct.Vec.html#impl-Send-for-Vec%3CT%2CA%3E">Site</a></li>
+</ol>
+
+    
+
+        </section>
+                
+                
+                    
+                        
+                        
+                        
+                    
+                    
+                
+                
+            <nav class="full-width article-navigation">
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/insertion-in-heap-pages/" aria-label="Prev" aria-describedby="left_title"><span class="arrow">←</span>&nbsp;Prev</a>
+                <p aria-hidden="true" id="left_title">insertion in heap pages</p></div>
+                <div></div>
+            </nav>
+        
+        
+
+        
+            
+            
+            
+
+            
+                
+                
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+        
+            
+
+<div id="comments" class="comments"
+
+
+    data-repo="tudor96stani&#x2F;tudor96stani.github.io"
+    data-repo-id="R_kgDOQuOQtQ"
+    data-category="General"
+    data-category-id="DIC_kwDOQuOQtc4C0MyW"
+    
+        data-mapping="pathname"
+    
+    data-strict="0"
+    data-reactions-enabled="1"
+    
+        data-input-position="top"
+    
+    data-light-theme="noborder_light"
+    data-dark-theme="noborder_dark"
+    
+        data-lang="en"
+    
+    data-lazy-loading="true"
+    >
+
+
+
+
+    <script src="https://tudor96stani.com/js/giscus.min.js" async></script>
+
+
+<noscript>You need JavaScript to view the comments.</noscript>
+</div>
+
+        </article>
+</main>
+
+    <div id="button-container">
+        
+        
+            <div id="toc-floating-container">
+                <input type="checkbox" id="toc-toggle" class="toggle"/>
+                <label for="toc-toggle" class="overlay"></label>
+                <label for="toc-toggle" id="toc-button" class="button" title="Toggle Table of Contents">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path d="M414.82-193.094q-18.044 0-30.497-12.32-12.453-12.319-12.453-30.036t12.453-30.086q12.453-12.37 30.497-12.37h392.767q17.237 0 29.927 12.487 12.69 12.486 12.69 30.203 0 17.716-12.69 29.919t-29.927 12.203H414.82Zm0-244.833q-18.044 0-30.497-12.487Q371.87-462.9 371.87-480.45t12.453-29.92q12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.511 12.69 12.512 12.69 29.845 0 17.716-12.69 30.086-12.69 12.37-29.927 12.37H414.82Zm0-245.167q-18.044 0-30.497-12.32t-12.453-30.037q0-17.716 12.453-30.086 12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.486 12.69 12.487 12.69 30.203 0 17.717-12.69 29.92-12.69 12.203-29.927 12.203H414.82ZM189.379-156.681q-32.652 0-55.878-22.829t-23.226-55.731q0-32.549 23.15-55.647 23.151-23.097 55.95-23.097 32.799 0 55.313 23.484 22.515 23.484 22.515 56.246 0 32.212-22.861 54.893-22.861 22.681-54.963 22.681Zm0-245.167q-32.652 0-55.878-23.134-23.226-23.135-23.226-55.623 0-32.487 23.467-55.517t56.12-23.03q32.102 0 54.721 23.288 22.62 23.288 22.62 55.775 0 32.488-22.861 55.364-22.861 22.877-54.963 22.877Zm-.82-244.833q-32.224 0-55.254-23.288-23.03-23.289-23.03-55.623 0-32.333 23.271-55.364 23.272-23.03 55.495-23.03 32.224 0 55.193 23.288 22.969 23.289 22.969 55.622 0 32.334-23.21 55.364-23.21 23.031-55.434 23.031Z"/></svg>
+                </label>
+                <div class="toc-content">
+                    
+
+<div class="toc-container">
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#intro">Intro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-buffer">The buffer</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-requirements">The requirements</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-old-design">The old design</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#the-new-solution">The new solution</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#frames">Frames</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#page-map">Page map</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#requesting-pages">Requesting pages</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#what-this-design-achieves">What this design achieves</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#conclusions-and-lessons-learned">Conclusions and lessons learned</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#additional-resources">Additional resources</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#race-conditions">Race conditions</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#1-two-threads-look-for-an-empty-frame">1. Two threads look for an empty frame</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#2-1-one-right-after-the-other-two-threads-want-to-read-the-same-page">2.1 One right after the other, two threads want to read the same page</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#2-2-two-threads-want-to-load-the-same-page-in-different-frames">2.2 Two threads want to load the same page in different frames</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#storage-access-times">Storage access times</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/#references">References</a>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+                </div>
+            </div>
+        
+
+        
+        <a href="#comments" id="comments-button" class="no-hover-padding" title="Go to the comments section">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+            </a>
+        
+
+        
+        <a href="#" id="top-button" class="no-hover-padding" title="Go to the top of the page">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"/></svg>
+        </a>
+    </div>
+
+
+<span id="copy-success" class="hidden">
+        Copied!
+    </span>
+    <span id="copy-init" class="hidden">
+        Copy code to clipboard
+    </span>
+    <script defer src="https://tudor96stani.com/js/copyCodeToClipboard.min.js"></script>
+
+
+    </div>
+    <footer>
+    <section>
+        <nav class="socials nav-navs"><ul><li>
+                        <a class="nav-links no-hover-padding social" rel="" 
+
+ href="https://tudor96stani.com/atom.xml">
+                        <img loading="lazy" alt="feed" title="feed" src="https://tudor96stani.com/social_icons/rss.svg">
+                        </a>
+                    </li><li class="js"><a class="nav-links no-hover-padding social" href="#" data-encoded-email="Y29udGFjdEB0dWRvcjk2c3RhbmkuY29t"><img loading="lazy" alt="email" title="email" src="https://tudor96stani.com/social_icons/email.svg">
+                            </a>
+                        </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding social" rel=" me" 
+
+ href="https://github.com/tudor96stani">
+                                    <img loading="lazy" alt="github" title="github" src="https://tudor96stani.com/social_icons/github.svg">
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            
+        </nav>
+
+        
+        <nav class="nav-navs">
+        </nav>
+
+        <div class="credits">
+            <small>
+                
+
+                
+                Powered by
+                <a rel="" 
+
+ href="https://www.getzola.org">Zola</a>
+                &amp;
+                <a rel="" 
+
+ href="https://github.com/welpo/tabi">tabi</a>
+
+                •
+                    <a rel="" 
+
+ href="https:&#x2F;&#x2F;github.com&#x2F;tudor96stani&#x2F;trdb-blog">
+                        Site source
+                    </a></small>
+        </div>
+    </section>
+
+    <script src="https://tudor96stani.com/js/decodeMail.min.js" async></script><div id="searchModal" class="search-modal js" role="dialog" aria-labelledby="modalTitle">
+    <h1 id="modalTitle" class="visually-hidden">Search</h1>
+    <div id="modal-content">
+        <div id="searchBar">
+            <div class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                </svg>
+            </div>
+            <input id="searchInput" role="combobox" autocomplete="off" spellcheck="false" aria-expanded="false" aria-controls="results-container" placeholder="Search…"/>
+            <div id="clear-search" class="close-icon interactive-icon" tabindex="0" role="button" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+                </svg>
+            </div>
+        </div>
+        <div id="results-container">
+            <div id="results-info"><span id="zero_results"> No results</span>
+                <span id="one_results"> $NUMBER result</span>
+                <span id="many_results"> $NUMBER results</span><span id="two_results"> $NUMBER results</span>
+                <span id="few_results"> $NUMBER results</span>
+            </div>
+            <div id="results" role="listbox"></div>
+        </div>
+    </div>
+</div>
+</footer>
+
+
+    
+    
+</body>
+
+</html>

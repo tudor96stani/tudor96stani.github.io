@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet href="https://tudor96stani.com/feed_style.xsl" type="text/xsl"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en">
+    <tabi:metadata xmlns:tabi="https://github.com/welpo/tabi">
+        <tabi:base_url>https:&#x2F;&#x2F;tudor96stani.com</tabi:base_url>
+        <tabi:separator>
+            •
+        </tabi:separator>
+        <tabi:about_feeds>This is a web feed, also known as an Atom feed. Subscribe by copying the URL from the address bar into your newsreader. Visit About Feeds to learn more and get started. It&#x27;s free.</tabi:about_feeds>
+        <tabi:visit_the_site>Visit website</tabi:visit_the_site>
+        <tabi:recent_posts>Recent posts</tabi:recent_posts>
+        <tabi:last_updated_on>Updated on $DATE</tabi:last_updated_on>
+        <tabi:default_theme></tabi:default_theme>
+        <tabi:post_listing_date>date</tabi:post_listing_date>
+        <tabi:current_section>Notes on software</tabi:current_section>
+    </tabi:metadata><title>Notes on software</title>
+    <link href="https://tudor96stani.com/atom.xml" rel="self" type="application/atom+xml"/>
+    <link href="https://tudor96stani.com" rel="alternate" type="text/html"/>
+    <generator uri="https://www.getzola.org/">Zola</generator><updated>2026-02-15T12:00:03+02:00</updated><id>https://tudor96stani.com/atom.xml</id><entry xml:lang="en">
+        <title>Storage manager - the buffer</title>
+        <published>2026-02-15T12:00:03+02:00</published>
+        <updated>2026-02-15T12:00:03+02:00</updated>
+        <author>
+            <name>Tudor Stanila</name>
+        </author>
+        <link rel="alternate" href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/" type="text/html"/>
+        <id>https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/</id>
+        <summary type="html">An overview of the implementation for the buffer manager, one of the three major services of the storage subsystems.</summary>
+        </entry><entry xml:lang="en">
+        <title>insertion in heap pages</title>
+        <published>2026-01-19T00:00:00+00:00</published>
+        <updated>2026-01-19T00:00:00+00:00</updated>
+        <author>
+            <name>Tudor Stanila</name>
+        </author>
+        <link rel="alternate" href="https://tudor96stani.com/blog/rusting-a-database/insertion-in-heap-pages/" type="text/html"/>
+        <id>https://tudor96stani.com/blog/rusting-a-database/insertion-in-heap-pages/</id>
+        <summary type="html">Implementation of the insertion algorithm for unsorted heap pages</summary>
+        </entry><entry xml:lang="en">
+        <title>maintaining stable row identifiers during page maintenance</title>
+        <published>2026-01-05T00:00:00+00:00</published>
+        <updated>2026-01-05T00:00:00+00:00</updated>
+        <author>
+            <name>Tudor Stanila</name>
+        </author>
+        <link rel="alternate" href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/" type="text/html"/>
+        <id>https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/</id>
+        <summary type="html">A rule that must be respected by the storage engine is to guarantee that internal page operations do not alter the slot numbers of existing rows</summary>
+        </entry><entry xml:lang="en">
+        <title>Paging the data</title>
+        <published>2025-12-11T15:34:03+02:00</published>
+        <updated>2025-12-11T15:34:03+02:00</updated>
+        <author>
+            <name>Tudor Stanila</name>
+        </author>
+        <link rel="alternate" href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/" type="text/html"/>
+        <id>https://tudor96stani.com/blog/rusting-a-database/paging-the-data/</id>
+        <summary type="html">An overview of the concept of slotted pages in a storage engine along with details on how it was implemented</summary>
+        </entry><entry xml:lang="en">
+        <title>Crates</title>
+        <published>2025-12-07T13:00:00+01:00</published>
+        <updated>2025-12-07T13:00:00+01:00</updated>
+        <author>
+            <name>Tudor Stanila</name>
+        </author>
+        <link rel="alternate" href="https://tudor96stani.com/blog/rusting-a-database/crates/" type="text/html"/>
+        <id>https://tudor96stani.com/blog/rusting-a-database/crates/</id>
+        <summary type="html">Organizing a project of this scale is already difficult - doing it in a new language, where you are not familiar with the idiomatic ways of structuring the project makes it even trickier</summary>
+        </entry><entry xml:lang="en">
+        <title>Why rust</title>
+        <published>2025-12-07T10:00:00+01:00</published>
+        <updated>2025-12-07T10:00:00+01:00</updated>
+        <author>
+            <name>Tudor Stanila</name>
+        </author>
+        <link rel="alternate" href="https://tudor96stani.com/blog/rusting-a-database/why-rust/" type="text/html"/>
+        <id>https://tudor96stani.com/blog/rusting-a-database/why-rust/</id>
+        <summary type="html">Why I chose Rust for the rewrite of this project</summary>
+        </entry><entry xml:lang="en">
+        <title>So I decided to write a database system</title>
+        <published>2025-12-07T09:00:00+01:00</published>
+        <updated>2025-12-07T09:00:00+01:00</updated>
+        <author>
+            <name>Tudor Stanila</name>
+        </author>
+        <link rel="alternate" href="https://tudor96stani.com/blog/rusting-a-database/so-i-decided-to-write-a-database/" type="text/html"/>
+        <id>https://tudor96stani.com/blog/rusting-a-database/so-i-decided-to-write-a-database/</id>
+        <summary type="html">First post, going over the reason behind this blog and giving some context.</summary>
+        </entry>
+</feed>

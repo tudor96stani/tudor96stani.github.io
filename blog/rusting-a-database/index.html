@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'self';font-src 'self' data:;img-src 'self' https://* data:;media-src 'self';style-src 'self';frame-src player.vimeo.com https://www.youtube-nocookie.com giscus.app;connect-src 'self' tudor96stani.goatcounter.com/count;script-src 'self' gc.zgo.at  giscus.app 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base" content="https://tudor96stani.com">
+
+    
+    <title>
+Notes on software • Rusting a Database</title>
+
+    
+    
+        <link rel="icon" type="image/png" href="https://tudor96stani.com/img/favicon-32x32.png"/>
+    
+    
+
+    
+    
+        
+            
+            
+                
+                    <link rel="alternate" type="application/atom+xml" title="Notes on software - Atom Feed" href="https://tudor96stani.com/atom.xml">
+                
+            
+        
+    
+
+    
+    
+    
+        
+            <link rel="stylesheet" href="https://tudor96stani.com/custom_subset.css?h=0b9535a28bc3d5bf2321">
+        
+    
+
+    
+        <link rel="stylesheet" href="https://tudor96stani.com/main.css?h=3716ab3457d2dd050b3c" />
+
+    <meta name="color-scheme" content="light dark" />
+        <meta name="description" content="" />
+        <meta property="og:description" content="" />
+
+    
+
+    <meta property="og:title" content="Notes on software" />
+    <meta property="og:type" content="article" />
+
+    
+<meta property="og:locale" content="en_GB" />
+
+    <meta property="og:url" content="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;" /><meta property="og:site_name" content="Notes on software">
+        <noscript><link rel="stylesheet" href="https://tudor96stani.com/no_js.css"/></noscript>
+        <script type="text/javascript" src="https://tudor96stani.com/js/initializeTheme.min.js"></script>
+        <script defer src="https://tudor96stani.com/js/themeSwitcher.min.js"></script>
+
+
+
+
+    
+    
+    <script async
+    
+        data-goatcounter="https://tudor96stani.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"
+        
+    ></script>
+    
+
+
+
+        <script defer src="https://tudor96stani.com/js/searchElasticlunr.min.js?h=3626c0ef99daa745b31e"></script>
+
+        
+    
+</head>
+
+
+<body>
+    <a href="#main-content" id="skip-link">Skip to content</a>
+    <header>
+    <nav class="navbar">
+        <div class="nav-title">
+            <a class="home-title" href="https://tudor96stani.com/">Notes on software</a>
+        </div>
+            <div class="nav-navs">
+                <ul>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/blog/">blog
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/about/">about
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/atom.xml">rss
+                                </a>
+                            </li>
+                        <li class="menu-icons-container">
+                        <ul class="menu-icons-group">
+                            <li class="js menu-icon">
+                                <div role="button" tabindex="0" id="search-button" class="search-icon interactive-icon" title="Click or press $SHORTCUT to open search" aria-label="Click or press $SHORTCUT to open search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                                        <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                                    </svg>
+                                </div>
+                            </li>
+
+                            
+                            
+
+                            <li class="theme-switcher-wrapper js"><div
+        title="Toggle dark&#x2F;light mode"
+        class="theme-switcher"
+        tabindex="0"
+        role="button"
+        aria-label="Toggle dark mode"
+        aria-pressed="false">
+    </div><div
+        title="Reset mode to default"
+        class="theme-resetter arrow"
+        tabindex="0"
+        role="button"
+        aria-hidden="true"
+        aria-label="Reset mode to default">
+    </div>
+
+</li>
+</ul>
+                    </li>
+                </ul>
+            </div>
+        
+    </nav>
+</header>
+
+    <div class="content" id="main-content">
+
+        
+        
+
+
+<main>
+
+<h1 class="title-container section-title bottom-divider">
+    Rusting a Database
+</h1>
+
+<section class="body">
+        <p>This is a blog about my journey of trying to implement a relational database engine in Rust, while also learning the language. The main point here is to create a system that mimics as close as possible a real one, so as to better understand the way it works and thus become a better database engineer.</p>
+
+    </section>
+
+    <div id="posts-list">
+        <h2 class="bottom-divider">
+            All posts
+        </h2>
+        
+
+    
+
+
+<div class="bloglist-container">
+    
+    
+        
+            
+                
+            
+
+            <section class="bloglist-meta bottom-divider">
+                <ul><li class="index-label">7</li>
+
+                    
+                </ul>
+            </section>
+
+            <section class="bloglist-content bottom-divider">
+                <div>
+                    
+
+                    <h2 class="bloglist-title">
+                        <a href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;storage-manager-the-buffer&#x2F;">Storage manager - the buffer</a>
+                    </h2>
+
+                    
+
+                    <div class="description">
+                        
+                            <p>An overview of the implementation for the buffer manager, one of the three major services of the storage subsystems.</p>
+                        
+                    </div>
+                    <a class="readmore" href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;storage-manager-the-buffer&#x2F;">Read more&nbsp;<span class="arrow">→</span></a>
+                </div>
+            </section>
+        
+        
+            
+        
+    
+        
+            
+                
+            
+
+            <section class="bloglist-meta bottom-divider">
+                <ul><li class="index-label">6</li>
+
+                    
+                </ul>
+            </section>
+
+            <section class="bloglist-content bottom-divider">
+                <div>
+                    
+
+                    <h2 class="bloglist-title">
+                        <a href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;insertion-in-heap-pages&#x2F;">insertion in heap pages</a>
+                    </h2>
+
+                    
+
+                    <div class="description">
+                        
+                            <p>Implementation of the insertion algorithm for unsorted heap pages</p>
+                        
+                    </div>
+                    <a class="readmore" href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;insertion-in-heap-pages&#x2F;">Read more&nbsp;<span class="arrow">→</span></a>
+                </div>
+            </section>
+        
+        
+            
+        
+    
+        
+            
+                
+            
+
+            <section class="bloglist-meta bottom-divider">
+                <ul><li class="index-label">5</li>
+
+                    
+                </ul>
+            </section>
+
+            <section class="bloglist-content bottom-divider">
+                <div>
+                    
+
+                    <h2 class="bloglist-title">
+                        <a href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;maintaining-stable-row-identifiers-during-page-maintenance&#x2F;">maintaining stable row identifiers during page maintenance</a>
+                    </h2>
+
+                    
+
+                    <div class="description">
+                        
+                            <p>A rule that must be respected by the storage engine is to guarantee that internal page operations do not alter the slot numbers of existing rows</p>
+                        
+                    </div>
+                    <a class="readmore" href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;maintaining-stable-row-identifiers-during-page-maintenance&#x2F;">Read more&nbsp;<span class="arrow">→</span></a>
+                </div>
+            </section>
+        
+        
+            
+        
+    
+        
+            
+                
+            
+
+            <section class="bloglist-meta bottom-divider">
+                <ul><li class="index-label">4</li>
+
+                    
+                </ul>
+            </section>
+
+            <section class="bloglist-content bottom-divider">
+                <div>
+                    
+
+                    <h2 class="bloglist-title">
+                        <a href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;paging-the-data&#x2F;">Paging the data</a>
+                    </h2>
+
+                    
+
+                    <div class="description">
+                        
+                            <p>An overview of the concept of slotted pages in a storage engine along with details on how it was implemented</p>
+                        
+                    </div>
+                    <a class="readmore" href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;paging-the-data&#x2F;">Read more&nbsp;<span class="arrow">→</span></a>
+                </div>
+            </section>
+        
+        
+            
+        
+    
+        
+            
+                
+            
+
+            <section class="bloglist-meta bottom-divider">
+                <ul><li class="index-label">3</li>
+
+                    
+                </ul>
+            </section>
+
+            <section class="bloglist-content bottom-divider">
+                <div>
+                    
+
+                    <h2 class="bloglist-title">
+                        <a href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;crates&#x2F;">Crates</a>
+                    </h2>
+
+                    
+
+                    <div class="description">
+                        
+                            <p>Organizing a project of this scale is already difficult - doing it in a new language, where you are not familiar with the idiomatic ways of structuring the project makes it even trickier</p>
+                        
+                    </div>
+                    <a class="readmore" href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;crates&#x2F;">Read more&nbsp;<span class="arrow">→</span></a>
+                </div>
+            </section>
+        
+        
+            
+        
+    
+        
+            
+                
+            
+
+            <section class="bloglist-meta bottom-divider">
+                <ul><li class="index-label">2</li>
+
+                    
+                </ul>
+            </section>
+
+            <section class="bloglist-content bottom-divider">
+                <div>
+                    
+
+                    <h2 class="bloglist-title">
+                        <a href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;why-rust&#x2F;">Why rust</a>
+                    </h2>
+
+                    
+
+                    <div class="description">
+                        
+                            <p>Why I chose Rust for the rewrite of this project</p>
+                        
+                    </div>
+                    <a class="readmore" href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;why-rust&#x2F;">Read more&nbsp;<span class="arrow">→</span></a>
+                </div>
+            </section>
+        
+        
+            
+        
+    
+        
+            
+                
+            
+
+            <section class="bloglist-meta ">
+                <ul><li class="index-label">1</li>
+
+                    
+                </ul>
+            </section>
+
+            <section class="bloglist-content ">
+                <div>
+                    
+
+                    <h2 class="bloglist-title">
+                        <a href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;so-i-decided-to-write-a-database&#x2F;">So I decided to write a database system</a>
+                    </h2>
+
+                    
+
+                    <div class="description">
+                        
+                            <p>First post, going over the reason behind this blog and giving some context.</p>
+                        
+                    </div>
+                    <a class="readmore" href="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;so-i-decided-to-write-a-database&#x2F;">Read more&nbsp;<span class="arrow">→</span></a>
+                </div>
+            </section>
+        
+        
+    
+</div>
+
+    </div>
+
+    
+
+</main>
+
+    <div id="button-container">
+        
+        
+
+        
+        
+
+        
+        <a href="#" id="top-button" class="no-hover-padding" title="Go to the top of the page">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"/></svg>
+        </a>
+    </div>
+
+
+<span id="copy-success" class="hidden">
+        Copied!
+    </span>
+    <span id="copy-init" class="hidden">
+        Copy code to clipboard
+    </span>
+    <script defer src="https://tudor96stani.com/js/copyCodeToClipboard.min.js"></script>
+
+
+    </div>
+    <footer>
+    <section>
+        <nav class="socials nav-navs"><ul><li>
+                        <a class="nav-links no-hover-padding social" rel="" 
+
+ href="https://tudor96stani.com/atom.xml">
+                        <img loading="lazy" alt="feed" title="feed" src="https://tudor96stani.com/social_icons/rss.svg">
+                        </a>
+                    </li><li class="js"><a class="nav-links no-hover-padding social" href="#" data-encoded-email="Y29udGFjdEB0dWRvcjk2c3RhbmkuY29t"><img loading="lazy" alt="email" title="email" src="https://tudor96stani.com/social_icons/email.svg">
+                            </a>
+                        </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding social" rel=" me" 
+
+ href="https://github.com/tudor96stani">
+                                    <img loading="lazy" alt="github" title="github" src="https://tudor96stani.com/social_icons/github.svg">
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            
+        </nav>
+
+        
+        <nav class="nav-navs">
+        </nav>
+
+        <div class="credits">
+            <small>
+                
+
+                
+                Powered by
+                <a rel="" 
+
+ href="https://www.getzola.org">Zola</a>
+                &amp;
+                <a rel="" 
+
+ href="https://github.com/welpo/tabi">tabi</a>
+
+                •
+                    <a rel="" 
+
+ href="https:&#x2F;&#x2F;github.com&#x2F;tudor96stani&#x2F;trdb-blog">
+                        Site source
+                    </a></small>
+        </div>
+    </section>
+
+    <script src="https://tudor96stani.com/js/decodeMail.min.js" async></script><div id="searchModal" class="search-modal js" role="dialog" aria-labelledby="modalTitle">
+    <h1 id="modalTitle" class="visually-hidden">Search</h1>
+    <div id="modal-content">
+        <div id="searchBar">
+            <div class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                </svg>
+            </div>
+            <input id="searchInput" role="combobox" autocomplete="off" spellcheck="false" aria-expanded="false" aria-controls="results-container" placeholder="Search…"/>
+            <div id="clear-search" class="close-icon interactive-icon" tabindex="0" role="button" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+                </svg>
+            </div>
+        </div>
+        <div id="results-container">
+            <div id="results-info"><span id="zero_results"> No results</span>
+                <span id="one_results"> $NUMBER result</span>
+                <span id="many_results"> $NUMBER results</span><span id="two_results"> $NUMBER results</span>
+                <span id="few_results"> $NUMBER results</span>
+            </div>
+            <div id="results" role="listbox"></div>
+        </div>
+    </div>
+</div>
+</footer>
+
+
+    
+    
+</body>
+
+</html>
