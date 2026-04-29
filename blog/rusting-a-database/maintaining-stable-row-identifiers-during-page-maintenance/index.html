@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'self';font-src 'self' data:;img-src 'self' https://* data:;media-src 'self';style-src 'self';frame-src player.vimeo.com https://www.youtube-nocookie.com giscus.app;connect-src 'self' tudor96stani.goatcounter.com/count;script-src 'self' gc.zgo.at  giscus.app 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base" content="https://tudor96stani.com">
+
+    
+    <title>
+Notes on software • maintaining stable row identifiers during page maintenance</title>
+
+    
+    
+        <link rel="icon" type="image/png" href="https://tudor96stani.com/img/favicon-32x32.png"/>
+    
+    
+
+    
+    
+        
+            
+            
+                
+                    <link rel="alternate" type="application/atom+xml" title="Notes on software - Atom Feed" href="https://tudor96stani.com/atom.xml">
+                
+            
+        
+    
+
+    
+    
+    
+        
+            <link rel="stylesheet" href="https://tudor96stani.com/custom_subset.css?h=0b9535a28bc3d5bf2321">
+        
+    
+
+    
+        <link rel="stylesheet" href="https://tudor96stani.com/main.css?h=3716ab3457d2dd050b3c" />
+
+    <meta name="color-scheme" content="light dark" />
+        <meta name="description" content="A rule that must be respected by the storage engine is to guarantee that internal page operations do not alter the slot numbers of existing rows" />
+        <meta property="og:description" content="A rule that must be respected by the storage engine is to guarantee that internal page operations do not alter the slot numbers of existing rows" />
+
+    
+
+    <meta property="og:title" content="maintaining stable row identifiers during page maintenance" />
+    <meta property="og:type" content="article" />
+
+    
+<meta property="og:locale" content="en_GB" />
+
+    <meta property="og:url" content="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;maintaining-stable-row-identifiers-during-page-maintenance&#x2F;" /><meta property="og:site_name" content="Notes on software">
+        <noscript><link rel="stylesheet" href="https://tudor96stani.com/no_js.css"/></noscript>
+        <script type="text/javascript" src="https://tudor96stani.com/js/initializeTheme.min.js"></script>
+        <script defer src="https://tudor96stani.com/js/themeSwitcher.min.js"></script>
+
+
+
+
+    
+    
+    <script async
+    
+        data-goatcounter="https://tudor96stani.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"
+        
+    ></script>
+    
+
+
+
+        <script defer src="https://tudor96stani.com/js/searchElasticlunr.min.js?h=3626c0ef99daa745b31e"></script>
+
+        
+    
+</head>
+
+
+<body>
+    <a href="#main-content" id="skip-link">Skip to content</a>
+    <header>
+    <nav class="navbar">
+        <div class="nav-title">
+            <a class="home-title" href="https://tudor96stani.com/">Notes on software</a>
+        </div>
+            <div class="nav-navs">
+                <ul>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/blog/">blog
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/about/">about
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/atom.xml">rss
+                                </a>
+                            </li>
+                        <li class="menu-icons-container">
+                        <ul class="menu-icons-group">
+                            <li class="js menu-icon">
+                                <div role="button" tabindex="0" id="search-button" class="search-icon interactive-icon" title="Click or press $SHORTCUT to open search" aria-label="Click or press $SHORTCUT to open search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                                        <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                                    </svg>
+                                </div>
+                            </li>
+
+                            
+                            
+
+                            <li class="theme-switcher-wrapper js"><div
+        title="Toggle dark&#x2F;light mode"
+        class="theme-switcher"
+        tabindex="0"
+        role="button"
+        aria-label="Toggle dark mode"
+        aria-pressed="false">
+    </div><div
+        title="Reset mode to default"
+        class="theme-resetter arrow"
+        tabindex="0"
+        role="button"
+        aria-hidden="true"
+        aria-label="Reset mode to default">
+    </div>
+
+</li>
+</ul>
+                    </li>
+                </ul>
+            </div>
+        
+    </nav>
+</header>
+
+    <div class="content" id="main-content">
+
+        
+        
+
+
+
+
+
+<main>
+    <article class="h-entry">
+        <h1 class="p-name article-title">
+            maintaining stable row identifiers during page maintenance
+        </h1>
+        <a class="u-url u-uid" href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/"></a>
+
+        <ul class="meta"><li>By <span class="p-author">Tudor Stanila</span></li><span class="hidden p-author h-card">
+<a rel="author" href="https:&#x2F;&#x2F;tudor96stani.com" class="u-url " title="Tudor Stanila">Tudor Stanila</a>
+</span>
+<li><time class="dt-published" datetime="2026-01-05"><span class='separator' aria-hidden='true'>•</span>5th Jan 2026</time></li><li title="1514 words"><span class='separator' aria-hidden='true'>•</span>8 min read</li>
+        </ul>
+            
+
+<div class="toc-container">
+    
+        <h3>Table of Contents</h3>
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#intro">intro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#row-ids">row IDs</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#how-sql-server-does-it">how SQL Server does it</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#stable-slot-numbers">stable slot numbers</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#row-deletions">row deletions</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#page-compaction">page compaction</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#outro">outro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#references">references</a>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+        
+            <p class="p-summary" hidden>A rule that must be respected by the storage engine is to guarantee that internal page operations do not alter the slot numbers of existing rows</p><section class="e-content body">
+    
+<h2 id="intro">intro</h2>
+<p>Christmas, New Year's, a 1-week ski trip, time with family, the rabbit hole of a full re-organization of my Obsidian vault into a <a href="https://zettelkasten.de/overview/">Zettelkasten</a> slip box after reading <a href="https://www.soenkeahrens.de/en/takesmartnotes">How to take smart notes</a> - all of these resulted in me making far less progress on this project than I would have expected, especially during my 3-week winter vacation. Nevertheless, there has been some progress.</p>
+<p>I am still within the storage system, working on the slotted pages for heaps and there have been a few interesting things I have encountered around the way a database engine will handle certain page maintenance operations.</p>
+<h2 id="row-ids">row IDs</h2>
+<p>Most systems (though here I am mainly knowledgeable about how SQL Server handles things) will use a <em>row ID</em> to internally identify a row.</p>
+<p>A <strong>row ID</strong> can be considered any identifier that allows the system to uniquely identify a single row. There can be multiple places where the engine would need to store this identifier, but maybe the best example is a non-clustered (or secondary) index. In here, each index entry will contain a pointer to the full row it belongs to. When retrieving rows based on that non-clustered index, the row identifier is used to obtain the full row (if needed).</p>
+<h3 id="how-sql-server-does-it">how SQL Server does it</h3>
+<p>In the case of SQL Server, row IDs used in non-clustered indexes depend on the source table, and it is usually referred to as the 'row bookmark value' (Delaney et al., 2013, p. 308):</p>
+<ul>
+<li>if the source table is clustered, the non-clustered indexes will use the clustering key as the row identifier</li>
+<li>if the source table is a heap, the non-clustered index will use a physical row locator to identify the row</li>
+</ul>
+<p>Today we are only focusing on heaps, as clustered tables are a whole other beast. That physical row locator (called RID by Microsoft) is an 8 byte value comprised of 3 different segments <code>FileID:PageID:SlotId</code> and can be broken down into 2 bytes for the FileId, 4 bytes for the PageId and 2 bytes for the SlotId (Delaney et al., 2013, p. 311).</p>
+<p>The relevant point here: <strong>a row ID will contain the slot number of the row and this row ID will appear in all non-clustered indexes</strong>. Which leads us to the concept behind this post.</p>
+<h2 id="stable-slot-numbers">stable slot numbers</h2>
+<p>Because indexes will use the slot ID as part of the row's identifier, the system needs to guarantee that rows maintain their slot number during internal page maintenance operations. If rows were to be assigned to other slots, all non-clustered indexes would also require an update, which would be pretty bad performance wise.</p>
+<p>The most direct implication of this rule is for the process of page compaction but, as I've noticed, the journey to guarantee this rule starts with deletions.</p>
+<h2 id="row-deletions">row deletions</h2>
+<p>One of the advantages abstracting the access to rows through the slot array is that certain operations such as deletions become trivial. Similar to how a file system works, deletion from a slotted page does not require us to touch the actual row data. Instead, it is enough to invalidate the slot pointing to that row, thus making the area of bytes corresponding to the row completely unreachable.</p>
+<p>The process is quite simple, but what does it mean to invalidate a slot? In my case, it is just a matter of setting both its <code>offset</code> and <code>length</code> fields to <code>0</code>, while keeping the slot count from the header untouched:</p>
+<pre class="z-code"><code><span class="z-text z-plain">initial: [(96, 100), (196, 50), (246, 50)]
+</span><span class="z-text z-plain">slot_count = 3
+</span><span class="z-text z-plain">// delete slot index 1 (196, 50)
+</span><span class="z-text z-plain">after: [(96, 100), (0, 0), (246, 50)] 
+</span><span class="z-text z-plain">slot_count = 3
+</span></code></pre>
+<p>This implementation adheres to the <strong>stable slot numbers</strong> rule:</p>
+<ul>
+<li>if, instead of invalidating the slot, we would have deleted it from the array completely (and decremented <code>slot_count</code>), we would have had to shift the next slots one index down, thus blatantly breaking the rule</li>
+<li>if we set it to <code>(0,0)</code> as we are doing now, but decremented the <code>slot_count</code>, we would have made the last valid slot unreachable.</li>
+</ul>
+<p>Turns out this rule logically simplified the implementation by quite a lot. The only more complex part of deletion is a small optimization I've added: if the row being deleted is <em>physically</em> the last on the page (so right at the end of the data section), we can actually avoid leaving the page fragmented by moving the <code>free_start</code> pointer to the end of the previous row (physically). If this is the happy case, the <code>can_compact</code> flag is also not set in the header to indicate fragmentation has started.</p>
+<p>I had actually missed doing this in the Rust implementation (despite me having done it in the Java db which was open on the other display) and I only realized it when I was trying to do the setup for some insertion tests - I initially marked the scenarios as 'technically possible, but not valid', until I gave it some more thought and discovered that they are in reality impossible <em>only if this optimization is implemented</em> (you can still see the <a href="https://github.com/tudor96stani/trdb/commit/182f42336fcb4195aeae1a95d7efc12df88eef88#diff-dfdbef1dd59ac775b8b2417ced94bb200da00cadb034183714effb8018c0003aR256">comment where I marked them as impossible</a>)</p>
+<h2 id="page-compaction">page compaction</h2>
+<p>The process of internally reorganizing the records in the page, in order to remove fragmentation. While all pages start off as tightly packed arrays where all rows are in a contiguous chunk of bytes, deletions and updates can lead to small fragments of bytes appearing in between rows. As a result, a page's free space counter might be high, but without any contiguous area of space large enough to fit a new row.
+Compaction is done by moving all the existing rows next to each other, thus removing any fragments.
+It is usually a lazy process, performed when an insertion cannot find any large enough fragment to fit the new row.</p>
+<p>My implementation for it might not be the most optimal, but it seems to work. I allocate a new byte array the size of the data segment (<code>free_start - header_size</code>), go through the slot array and for each <em>valid</em> slot, copy the row in the new byte array, packing them one after the other &amp; updating the slot offset value. Then I just overwrite the data segment with the new byte array (which will have some trailing 0s, as many as there were bytes from fragments).</p>
+<p>I'm sure there is some fancier in-place approach where you don't need to temporarily allocate a new array of up to 4k bytes, but that is more of a nice-to-have, later-on-if-i-ever-get-to-it optimization. Especially since this implementation checks the most important box: it does not break the rule of stable slot numbers. Funnily enough, the initial implementation in Java was to actually allocate a whole new page and only copy the valid slots, then replace the current page's byte array (a hacky way of leveraging the insertion algorithm without having to think too much). It was only while discussing the whole process with a friend almost a year later that we realized how the approach violated this rule. So maybe that's why I'm writing about it.</p>
+<h2 id="outro">outro</h2>
+<p>That is mostly it for this post, which turned out to be way longer than I expected anyways. As I said in the beginning, things have been moving pretty slowly during the last few weeks, but they should pick up now that the holidays are over.</p>
+<p>I've also been working on is a nicer infrastructure for testing - my goal for this project is to try and add tests for everything as I am writing the code, to avoid having to cover tens of scenarios later on. I've been looking into ways in which I can leverage some of the features of Rust to create helpers for this module that will make the setup of any test scenario a breeze - but I think I will cover that in another post.</p>
+<p>One other thing that has kept me busy has been the insertion algorithm - the Java implementation was quite chunky, so I've been splitting it into smaller pieces, cleaning them up (and trying to cover them as much as possible).</p>
+<p>As next steps, I will hopefully finish the things related to heap pages pretty soon. Then I need to decide whether I want to stay in the storage engine and work on things like index pages (and the monstrous B+trees), or to expand into the other modules.
+Most likely I am going to go with the second. This whole process is quite slow, not due to the differences between the two languages, but because at every step I am questioning many of the implementation details from the Java db, trying to improve things or to solve shortcomings. Because of this, going through all the layers with a small working prototype might make decisions easier when I revisit them to complete the MVP. And on a subjective side of things, I'd like to have a working prototype as soon as possible.</p>
+<h2 id="references">references</h2>
+<ul>
+<li><a href="https://www.microsoftpressstore.com/store/microsoft-sql-server-2012-internals-9780735658561">Delaney, K., Beauchemin, B., Cunningham, C., Kehayias, J., Freeman, C., Nevarez, B., &amp; Randal, P. S. (2013). <em>Microsoft SQL Server 2012 Internals</em></a></li>
+</ul>
+
+    
+
+        </section>
+                
+                
+                    
+                        
+                        
+                        
+                    
+                    
+                        
+                        
+                        
+                    
+                
+                
+            <nav class="full-width article-navigation">
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/" aria-label="Prev" aria-describedby="left_title"><span class="arrow">←</span>&nbsp;Prev</a>
+                <p aria-hidden="true" id="left_title">Paging the data</p></div>
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/insertion-in-heap-pages/" aria-label="Next" aria-describedby="right_title">Next&nbsp;<span class="arrow">→</span></a>
+                <p aria-hidden="true" id="right_title">insertion in heap pages</p></div>
+            </nav>
+        
+        
+
+        
+            
+            
+            
+
+            
+                
+                
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+        
+            
+
+<div id="comments" class="comments"
+
+
+    data-repo="tudor96stani&#x2F;tudor96stani.github.io"
+    data-repo-id="R_kgDOQuOQtQ"
+    data-category="General"
+    data-category-id="DIC_kwDOQuOQtc4C0MyW"
+    
+        data-mapping="pathname"
+    
+    data-strict="0"
+    data-reactions-enabled="1"
+    
+        data-input-position="top"
+    
+    data-light-theme="noborder_light"
+    data-dark-theme="noborder_dark"
+    
+        data-lang="en"
+    
+    data-lazy-loading="true"
+    >
+
+
+
+
+    <script src="https://tudor96stani.com/js/giscus.min.js" async></script>
+
+
+<noscript>You need JavaScript to view the comments.</noscript>
+</div>
+
+        </article>
+</main>
+
+    <div id="button-container">
+        
+        
+            <div id="toc-floating-container">
+                <input type="checkbox" id="toc-toggle" class="toggle"/>
+                <label for="toc-toggle" class="overlay"></label>
+                <label for="toc-toggle" id="toc-button" class="button" title="Toggle Table of Contents">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path d="M414.82-193.094q-18.044 0-30.497-12.32-12.453-12.319-12.453-30.036t12.453-30.086q12.453-12.37 30.497-12.37h392.767q17.237 0 29.927 12.487 12.69 12.486 12.69 30.203 0 17.716-12.69 29.919t-29.927 12.203H414.82Zm0-244.833q-18.044 0-30.497-12.487Q371.87-462.9 371.87-480.45t12.453-29.92q12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.511 12.69 12.512 12.69 29.845 0 17.716-12.69 30.086-12.69 12.37-29.927 12.37H414.82Zm0-245.167q-18.044 0-30.497-12.32t-12.453-30.037q0-17.716 12.453-30.086 12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.486 12.69 12.487 12.69 30.203 0 17.717-12.69 29.92-12.69 12.203-29.927 12.203H414.82ZM189.379-156.681q-32.652 0-55.878-22.829t-23.226-55.731q0-32.549 23.15-55.647 23.151-23.097 55.95-23.097 32.799 0 55.313 23.484 22.515 23.484 22.515 56.246 0 32.212-22.861 54.893-22.861 22.681-54.963 22.681Zm0-245.167q-32.652 0-55.878-23.134-23.226-23.135-23.226-55.623 0-32.487 23.467-55.517t56.12-23.03q32.102 0 54.721 23.288 22.62 23.288 22.62 55.775 0 32.488-22.861 55.364-22.861 22.877-54.963 22.877Zm-.82-244.833q-32.224 0-55.254-23.288-23.03-23.289-23.03-55.623 0-32.333 23.271-55.364 23.272-23.03 55.495-23.03 32.224 0 55.193 23.288 22.969 23.289 22.969 55.622 0 32.334-23.21 55.364-23.21 23.031-55.434 23.031Z"/></svg>
+                </label>
+                <div class="toc-content">
+                    
+
+<div class="toc-container">
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#intro">intro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#row-ids">row IDs</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#how-sql-server-does-it">how SQL Server does it</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#stable-slot-numbers">stable slot numbers</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#row-deletions">row deletions</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#page-compaction">page compaction</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#outro">outro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/#references">references</a>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+                </div>
+            </div>
+        
+
+        
+        <a href="#comments" id="comments-button" class="no-hover-padding" title="Go to the comments section">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+            </a>
+        
+
+        
+        <a href="#" id="top-button" class="no-hover-padding" title="Go to the top of the page">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"/></svg>
+        </a>
+    </div>
+
+
+<span id="copy-success" class="hidden">
+        Copied!
+    </span>
+    <span id="copy-init" class="hidden">
+        Copy code to clipboard
+    </span>
+    <script defer src="https://tudor96stani.com/js/copyCodeToClipboard.min.js"></script>
+
+
+    </div>
+    <footer>
+    <section>
+        <nav class="socials nav-navs"><ul><li>
+                        <a class="nav-links no-hover-padding social" rel="" 
+
+ href="https://tudor96stani.com/atom.xml">
+                        <img loading="lazy" alt="feed" title="feed" src="https://tudor96stani.com/social_icons/rss.svg">
+                        </a>
+                    </li><li class="js"><a class="nav-links no-hover-padding social" href="#" data-encoded-email="Y29udGFjdEB0dWRvcjk2c3RhbmkuY29t"><img loading="lazy" alt="email" title="email" src="https://tudor96stani.com/social_icons/email.svg">
+                            </a>
+                        </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding social" rel=" me" 
+
+ href="https://github.com/tudor96stani">
+                                    <img loading="lazy" alt="github" title="github" src="https://tudor96stani.com/social_icons/github.svg">
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            
+        </nav>
+
+        
+        <nav class="nav-navs">
+        </nav>
+
+        <div class="credits">
+            <small>
+                
+
+                
+                Powered by
+                <a rel="" 
+
+ href="https://www.getzola.org">Zola</a>
+                &amp;
+                <a rel="" 
+
+ href="https://github.com/welpo/tabi">tabi</a>
+
+                •
+                    <a rel="" 
+
+ href="https:&#x2F;&#x2F;github.com&#x2F;tudor96stani&#x2F;trdb-blog">
+                        Site source
+                    </a></small>
+        </div>
+    </section>
+
+    <script src="https://tudor96stani.com/js/decodeMail.min.js" async></script><div id="searchModal" class="search-modal js" role="dialog" aria-labelledby="modalTitle">
+    <h1 id="modalTitle" class="visually-hidden">Search</h1>
+    <div id="modal-content">
+        <div id="searchBar">
+            <div class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                </svg>
+            </div>
+            <input id="searchInput" role="combobox" autocomplete="off" spellcheck="false" aria-expanded="false" aria-controls="results-container" placeholder="Search…"/>
+            <div id="clear-search" class="close-icon interactive-icon" tabindex="0" role="button" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+                </svg>
+            </div>
+        </div>
+        <div id="results-container">
+            <div id="results-info"><span id="zero_results"> No results</span>
+                <span id="one_results"> $NUMBER result</span>
+                <span id="many_results"> $NUMBER results</span><span id="two_results"> $NUMBER results</span>
+                <span id="few_results"> $NUMBER results</span>
+            </div>
+            <div id="results" role="listbox"></div>
+        </div>
+    </div>
+</div>
+</footer>
+
+
+    
+    
+</body>
+
+</html>

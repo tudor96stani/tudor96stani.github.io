@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'self';font-src 'self' data:;img-src 'self' https://* data:;media-src 'self';style-src 'self';frame-src player.vimeo.com https://www.youtube-nocookie.com giscus.app;connect-src 'self' tudor96stani.goatcounter.com/count;script-src 'self' gc.zgo.at  giscus.app 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base" content="https://tudor96stani.com">
+
+    
+    <title>
+Notes on software • Paging the data</title>
+
+    
+    
+        <link rel="icon" type="image/png" href="https://tudor96stani.com/img/favicon-32x32.png"/>
+    
+    
+
+    
+    
+        
+            
+            
+                
+                    <link rel="alternate" type="application/atom+xml" title="Notes on software - Atom Feed" href="https://tudor96stani.com/atom.xml">
+                
+            
+        
+    
+
+    
+    
+    
+        
+            <link rel="stylesheet" href="https://tudor96stani.com/custom_subset.css?h=0b9535a28bc3d5bf2321">
+        
+    
+
+    
+        <link rel="stylesheet" href="https://tudor96stani.com/main.css?h=3716ab3457d2dd050b3c" />
+
+    <meta name="color-scheme" content="light dark" />
+        <meta name="description" content="An overview of the concept of slotted pages in a storage engine along with details on how it was implemented" />
+        <meta property="og:description" content="An overview of the concept of slotted pages in a storage engine along with details on how it was implemented" />
+
+    
+
+    <meta property="og:title" content="Paging the data" />
+    <meta property="og:type" content="article" />
+
+    
+<meta property="og:locale" content="en_GB" />
+
+    <meta property="og:url" content="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;paging-the-data&#x2F;" /><meta property="og:site_name" content="Notes on software">
+        <noscript><link rel="stylesheet" href="https://tudor96stani.com/no_js.css"/></noscript>
+        <script type="text/javascript" src="https://tudor96stani.com/js/initializeTheme.min.js"></script>
+        <script defer src="https://tudor96stani.com/js/themeSwitcher.min.js"></script>
+
+
+
+
+    
+    
+    <script async
+    
+        data-goatcounter="https://tudor96stani.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"
+        
+    ></script>
+    
+
+
+
+        <script defer src="https://tudor96stani.com/js/searchElasticlunr.min.js?h=3626c0ef99daa745b31e"></script>
+
+        
+    
+</head>
+
+
+<body>
+    <a href="#main-content" id="skip-link">Skip to content</a>
+    <header>
+    <nav class="navbar">
+        <div class="nav-title">
+            <a class="home-title" href="https://tudor96stani.com/">Notes on software</a>
+        </div>
+            <div class="nav-navs">
+                <ul>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/blog/">blog
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/about/">about
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/atom.xml">rss
+                                </a>
+                            </li>
+                        <li class="menu-icons-container">
+                        <ul class="menu-icons-group">
+                            <li class="js menu-icon">
+                                <div role="button" tabindex="0" id="search-button" class="search-icon interactive-icon" title="Click or press $SHORTCUT to open search" aria-label="Click or press $SHORTCUT to open search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                                        <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                                    </svg>
+                                </div>
+                            </li>
+
+                            
+                            
+
+                            <li class="theme-switcher-wrapper js"><div
+        title="Toggle dark&#x2F;light mode"
+        class="theme-switcher"
+        tabindex="0"
+        role="button"
+        aria-label="Toggle dark mode"
+        aria-pressed="false">
+    </div><div
+        title="Reset mode to default"
+        class="theme-resetter arrow"
+        tabindex="0"
+        role="button"
+        aria-hidden="true"
+        aria-label="Reset mode to default">
+    </div>
+
+</li>
+</ul>
+                    </li>
+                </ul>
+            </div>
+        
+    </nav>
+</header>
+
+    <div class="content" id="main-content">
+
+        
+        
+
+
+
+
+
+<main>
+    <article class="h-entry">
+        <h1 class="p-name article-title">
+            Paging the data
+        </h1>
+        <a class="u-url u-uid" href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/"></a>
+
+        <ul class="meta"><li>By <span class="p-author">Tudor Stanila</span></li><span class="hidden p-author h-card">
+<a rel="author" href="https:&#x2F;&#x2F;tudor96stani.com" class="u-url " title="Tudor Stanila">Tudor Stanila</a>
+</span>
+<li><time class="dt-published" datetime="2025-12-11T15:34:03+02:00"><span class='separator' aria-hidden='true'>•</span>11th Dec 2025</time></li><li title="2743 words"><span class='separator' aria-hidden='true'>•</span>14 min read</li>
+        </ul>
+            
+
+<div class="toc-container">
+    
+        <h3>Table of Contents</h3>
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#intro">Intro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#why-pages">Why pages</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#slotted-pages">Slotted pages</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#structure-and-behavior">Structure and behavior</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#header">Header</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#slots">Slots</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#why-slotted-pages">Why slotted pages</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#variable-length-rows">Variable length rows</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#encapsulating-the-details">Encapsulating the details</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#implementation">Implementation</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#java">Java</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#rust">Rust</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#headerref-and-headermut">HeaderRef and HeaderMut</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#slotarrayref-and-slotarraymut">SlotArrayRef and SlotArrayMut</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#page-api">Page API</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#error-handling">Error handling</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#remaining-work">Remaining work</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#resources">Resources</a>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+        
+            <p class="p-summary" hidden>An overview of the concept of slotted pages in a storage engine along with details on how it was implemented</p><section class="e-content body">
+    
+<h2 id="intro">Intro</h2>
+<p>At the foundation of any database engine is the storage layer - responsible for handling the actual persistence and retrieval of data on disk. In this post, I will go over database pages, the universally adopted abstraction for how the engine interacts with the disk. The theoretical part of the article does not propose any new design, but rather summarizes how databases typically structure and use pages. I then walk through my own implementation of database pages, which, while custom-built, follows closely the structure and behavior described in the theoretical overview.</p>
+<h2 id="why-pages">Why pages</h2>
+<p>A <strong>database page</strong> (also referred to as a block) is the fundamental unit of storage and I/O inside most database engines. Instead of reading or writing arbitrary bytes, the database organizes its files into fixed-size blocks - generally 4 KB to 16 KB - that contain a header, records (rows) or index entries, and free space.</p>
+<p>Pages are the basis for how data is stored on disk, cached in memory, and manipulated by internal components such as B-trees, buffer pools, and write-ahead logging.</p>
+<p>Databases use pages because they provide deterministic control over I/O. Fixed-size blocks allow the engine to align with disk hardware, optimize sequential reads, minimize fragmentation and avoid expensive random access. This also makes caching predictable: a buffer pool can simply hold X frames, each corresponding to exactly one page, allowing clearer decisions about eviction, tracking dirty pages, and pinning.</p>
+<p>Pages also decouple the database from operating system memory management. Relying on the OS pages or the OS cache would make eviction, flushing, and write ordering unpredictable or outside the control of the engine. Databases need to know exactly when a block has been written, how to track its state relative to the write-ahead log, and how to restore it after a crash. Having their own page format and buffer management system gives them full control over these constraints.</p>
+<p>The page abstraction is also essential for data structures like B-trees and for space management within tables. Each index node fits within a single page, making lookups and modifications more efficient. More on B-tree backed indexes in a later post.</p>
+<p>As with many other areas and modules, the OS is the enemy of the engine, and the database will choose to implement its own mechanisms, rather than relying on the OS provided abstractions in order to be able to optimize and define its behavior exactly as it wants it.</p>
+<h2 id="slotted-pages">Slotted pages</h2>
+<p>The most common implementation for this is called a <strong>slotted page</strong>. The reasoning behind this concept is explained in the <strong>Why slotted pages</strong> section - but first I will quickly go over the structure and the behavior of this kind of page by using my design as an example.</p>
+<h3 id="structure-and-behavior">Structure and behavior</h3>
+<p>I have configured a page to be 4KB in size - I have chosen this size mostly because it is more manageable to look through while debugging and because I do most of my work on a Macbook with an SSD that has a 4KB block size as well, so that matches nicely.</p>
+<p>Pages are basically a contiguous chunk of 4096 bytes structured as a 96-byte header, immediately followed by a data region growing right (or down) and ending with a slot array growing left (or up):
+<img src="../../../img/Data-pages-overview.svg" alt="page structure" /></p>
+<h4 id="header">Header</h4>
+<p>The header represents the first 96 bytes of the page and stores metadata about the page itself: the total number of slots that are currently in use, the amount of free space remaining on the page, the type of the page (simple heap data page, index page, etc), various flags (e.g., fragmentation),  pointers to the sibling pages (in the case of index pages).</p>
+<p>These are stored as different data types: for example, a <code>16 bit</code> integer is enough to store the total number of rows in the page - we can never expect to have a large number of rows. Flags require even fewer bits, while other fields like sibling pointer might require more.</p>
+<h4 id="slots">Slots</h4>
+<p>The idea behind the slotted page is pretty simple: whenever you insert a row, you place it wherever there is some room in the page, then you create a new entry in the slot array - this entry will store the offset at which the row starts and its length. The row is now identified by its slot number.</p>
+<h5 id="reading">Reading</h5>
+<p>Because the slots are fixed size (4 bytes in my case - 2 for the offset, 2 for the length), it is trivial to read directly the <em>i-th</em> slot - e.g. reading slot at index 3 simply means positioning your read-head at <code>PAGE_SIZE - (slot_number + 1) * SLOT_SIZE = 4096 - (3 + 1) * 4 = 4080</code>, then reading the first 4 bytes (in the image above, that would give us the slot <code>(140, 12)</code>).</p>
+<p>Iterating over all the rows in the page is equally simple - you just iterate over the slot array, dereference each slot and output the corresponding row.</p>
+<h5 id="updating">Updating</h5>
+<p>As said, inserting a new row means finding some free space in the page and creating a new slot.</p>
+<p>Deletion, on the other hand, is straightforward - you can just delete (or invalidate) the slot - deleting the actual bytes of the row is optional and can be postponed, since that segment of the page is no longer accessible and will eventually be overwritten. A process called compaction will rearrange all the existing rows in a contiguous segment, removing any fragmentation that may have occurred after deletions.</p>
+<p>As for updating, if the new row has the same size (or smaller), the update can be done in place. If it's greater, the updated value will need to be placed somewhere else in the page and the slot's offset will be updated - the slot number, however, will remain unchanged.</p>
+<h3 id="why-slotted-pages">Why slotted pages</h3>
+<p>The way I see it, slotted pages solve two main problems:</p>
+<ul>
+<li>How to handle variable length rows</li>
+<li>How to encapsulate storage details from outside objects</li>
+</ul>
+<h5 id="variable-length-rows">Variable length rows</h5>
+<p>Say we didn't have slotted pages, but wanted to store rows that vary in length. How would we do that? The most direct approach would be to store them as <code>[ row_length | row_bytes]</code>- e.g. <code>[ 5 | 'hello']</code>. This allows you to know exactly how many bytes you need to read to obtain a single row.</p>
+<p>But what about random access? What happens if you need to read the 3-rd row? You have no idea where it starts exactly, so you need to: read the length of row 1, move the cursor at <code>current + row_1_length</code>, read the length of row 2, move the cursor at <code>current + row_2_length</code>, then finally read the row you need.</p>
+<p>This can become cumbersome and inefficient.</p>
+<p>With slots on the other hand, because they are fixed size, you can determine exactly where the 3rd slot is stored, which will point you to where the row itself is stored. In our case, the 3rd slot (<code>index = 2</code>) will be placed at <code>PAGE_SIZE - (index + 1) * SLOT_SIZE = 4096 - 3 * 4 = 4084</code>. By computing this offset and setting the read head at that location, we are able to directly read the two <code>short</code>s that compose the slot.</p>
+<h5 id="encapsulating-the-details">Encapsulating the details</h5>
+<p>The other advantage of slots is that it allows you to hide from the outside world the way the page organizes itself underneath.</p>
+<p>Again, say we didn't have the slot array.
+If you look at the drawing of the page from the start of the post, you might notice that row 3 is missing because it was deleted.
+How would we handle the page operations now, say, for reading row #4? We would read row 1, then row 2 - and then? We would need some sort of pointer to indicate that we need to skip some bytes to be able to get to what is labelled as row 4, but in reality, is the now 3rd row. Or we would need to compact (remove fragmentation) on each delete.</p>
+<p>But if we were to compact on each delete - this means that row 4 now becomes row 3. This can become quite problematic. What if there is an index out there for this table? We would need to not only remove the old row from it, but also update rows 4, 5, 6, ... to become rows 3, 4, 5, ...</p>
+<p><strong>The problem is that the logical ordering of the rows is dependent on the physical ordering and organization on disk.</strong></p>
+<p>This is very limiting and causes dependencies left and right. Even if external objects don't know the exact offset of the row, they are dependent on the place where it is stored and rows themselves are dependent on one another.</p>
+<p><strong>Slots allow us to hide all of these details from the outside world.</strong></p>
+<p>By only exposing the slot numbers to external objects, we are free to organize the rows however we want - fragmented, compacted, in increasing or decreasing order of their size, all even and all odd, does not matter because the slot array stays constant. Deleting a row and compacting the page means moving around the <strong>only the row data</strong> - the slots stay unchanged. If you consult the drawing again, you will notice that the 3rd slot is <code>(0,0)</code> - that is because the row was deleted and the slot invalidated, but not removed from the array. This means that after a compaction, the space that was occupied by the row will be overwritten, but the <code>(0,0)</code> slot will remain in the array.</p>
+<p>As a result, row 4 will remain row 4, regardless of where it is stored in the page, so external objects like indexes will not be affected by any internal reorganization of the page.</p>
+<h2 id="implementation">Implementation</h2>
+<h3 id="java">Java</h3>
+<p>The original Java implementation defined a class called <code>SlottedPage</code> which contained a <code>ByteBuffer</code> of size 4096 with the actual content from disk. It also exposed numerous methods for interacting with the page - reading and writing flags from the header, retrieving, inserting or updating rows, etc. Additionally, a <code>SortedPage</code> class extended the <code>SlottedPage</code> and offered overrides for B-tree index nodes.</p>
+<p>This grew a bit cumbersome for several reasons:</p>
+<ul>
+<li>Inheritance sometimes sucks - had a bug I spent several days fixing, only because I was expecting an object to be a <code>SortedPage</code>, but was in reality an unsorted <code>SlottedPage</code>, which broke some B-tree invariants. This could have been prevented by a better implementation or by paying more attention, but I feel my point still stands.</li>
+<li>The classes grew quite big - exposing a different method for every header value, every behavior - this led to large objects.</li>
+<li>(A me problem) Not a lot of attention paid to data duplication - there were flows where the main byte array of the page was duplicated and copied around as it was passed from method to method.</li>
+</ul>
+<h3 id="rust">Rust</h3>
+<p>The new implementation is pretty similar conceptually to the Java one. However, in a Rust-centric approach I tried to focus more on the ownership side of things and ensure that the data is not duplicated in memory for no good reason. I also leveraged the fact that you can have multiple <code>impl</code> blocks across different files for the same <code>struct</code> - this allowed me to group methods in different files based on their functionality.</p>
+<p>The next question was how to actually store the page bytes in memory and how it would play along with the buffer. The way I saw it, I had two main possible directions:</p>
+<ol>
+<li>The page owns the byte array, while the buffer cache owns the pages via some data structure.</li>
+<li>The buffer manager allocates and owns a pool of frames where each page is placed -&gt; then the page is only a pointer to that memory region.</li>
+</ol>
+<p>Based on my research, the second option seems more popular or idiomatic. I chose, however, to go with the first one because it felt easier to avoid doing all that pointer arithmetic on the buffer pool &amp; dealing with lifetimes. In a way it also felt more modern &amp; more Rust (might be wrong here tho).</p>
+<p>The base of it all is the <code>Page</code> struct:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">Page</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">page_id</span><span class="z-punctuation z-separator z-type z-rust">:</span> PageId,   
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">data</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Box</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-storage z-type z-rust">u8</span><span class="z-punctuation z-separator z-rust">;</span></span> <span class="z-variable z-other z-constant z-rust">PAGE_SIZE</span><span class="z-punctuation z-section z-group z-end z-rust">]</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<p>The <code>page_id</code> is just an in-memory page identifier comprised of <code>filename_hash::page_number_within_file</code>. Only the page number within the file is stored in the page header - the filename itself will be known through the use of system catalogs.
+The <code>data</code> field stores the main byte array of the page in a <code>Box</code> on the heap. I chose an actual array over something like a <code>Vec</code> as the size will never change so the overhead of the <code>Vec</code> seemed unnecessary.</p>
+<h4 id="headerref-and-headermut">HeaderRef and HeaderMut</h4>
+<p>The first order of business was to provide access to the header of the page. Instead of going with a set of getters and setters on the main page, I decided to create two new structs, <code>HeaderRef</code> and <code>HeaderMut</code>:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-storage z-modifier z-rust">pub</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-other z-rust">crate</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">HeaderRef</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">bytes</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-keyword z-operator z-rust">&amp;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span> [<span class="z-storage z-type z-rust">u8</span>; HEADER_SIZE] 
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-storage z-modifier z-rust">pub</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-other z-rust">crate</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">HeaderMut</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">bytes</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-keyword z-operator z-rust">&amp;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span> <span class="z-storage z-modifier z-rust">mut</span> [<span class="z-storage z-type z-rust">u8</span>; HEADER_SIZE] 
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<p>These structures borrow from the main page byte array a slice the size of the header - namely the first 96 bytes. <code>HeaderRef</code> offers an <strong>immutable view</strong> into the header of the page via getters, while <code>HeaderMut</code> offers a <strong>mutable view</strong> via getters and setters. The word <strong>view</strong> here is relevant to me - that is because these structs are zero-copy - they do not duplicate the underlying byte array in any way. Because their slices are also limited to the header size, they cannot affect the rest of the page, should there be any bug. I also decided to split them in mutable and immutable to keep the trend of Rust - if you want to modify something, you should opt in for the mutable one.</p>
+<p>The getters and setters are implemented via a macro that takes as param the flag/value name and data type, to avoid having to write a large number of methods manually.</p>
+<h4 id="slotarrayref-and-slotarraymut">SlotArrayRef and SlotArrayMut</h4>
+<p>Similarly to the header, I also provide access to the slot array via the following structs:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-storage z-modifier z-rust">pub</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-other z-rust">crate</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">SlotArrayRef</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>   
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">bytes</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-keyword z-operator z-rust">&amp;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span> [<span class="z-storage z-type z-rust">u8</span>],  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust"><span class="z-storage z-modifier z-rust">pub</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-other z-rust">crate</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">SlotArrayMut</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>    
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">bytes</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-keyword z-operator z-rust">&amp;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span> <span class="z-storage z-modifier z-rust">mut</span> [<span class="z-storage z-type z-rust">u8</span>],  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<p>The reasoning here is the same: slice into the main array and encapsulate behavior in a more organized and testable way.
+These structs are instantiated with a slice the size of the slot array at the time of its creation: if the page contains 3 slots, the slice will be <code>3*4</code> bytes, or more precisely the last 12 bytes of the page.</p>
+<p>They offer methods for retrieving slots, and in the case of <code>SlotArrayMut</code>, insert/update slots.
+They also expose the slot structs - a zero-copy view of a single slot:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-storage z-modifier z-rust">pub</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-other z-rust">crate</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">SlotRef</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">slot_index</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-storage z-type z-rust">u32</span>,  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">bytes</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-keyword z-operator z-rust">&amp;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span> [<span class="z-storage z-type z-rust">u8</span>; SLOT_SIZE]
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-storage z-modifier z-rust">pub</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-other z-rust">crate</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-struct z-rust"><span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-generic z-rust"><span class="z-entity z-name z-struct z-rust">SlotMut</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-meta z-struct z-rust"> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-variable z-other z-member z-rust">slot_index</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-storage z-type z-rust">u32</span>,  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">	<span class="z-variable z-other z-member z-rust">bytes</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-keyword z-operator z-rust">&amp;</span><span class="z-storage z-modifier z-lifetime z-rust">&#39;a</span> <span class="z-storage z-modifier z-rust">mut</span> [<span class="z-storage z-type z-rust">u8</span>; SLOT_SIZE]
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<h4 id="page-api">Page API</h4>
+<p>With the exception of the main <code>Page</code> struct, all behavior and structs are internal to the <code>page</code> crate. The page exposes a set of public methods that are accessible outside of the crate - for creation of the page itself and for retrieval/insertion/deletion/update of rows. Underneath, these public methods leverage this structs and encapsulate the behavior of the page. The main <code>impl</code> blocks are split into separate files: one for reading rows, one for inserting, etc. All of these internal methods can be tested in place where needed.</p>
+<h4 id="error-handling">Error handling</h4>
+<p>I tried to create an error enum for every main flow: <code>InsertError</code>, <code>ReadRowError</code>, etc. Underneath, these are derivable for more concrete errors: all header operations can return <code>HeaderError</code>, all slot operations can return <code>SlotError</code>, etc.
+All of these errors can be converted to a <code>PageOpError</code>, which represents the crate's catch-all error type:</p>
+<pre data-lang="text" class="language-text z-code"><code class="language-text" data-lang="text"><span class="z-text z-plain">                       HeaderError
+</span><span class="z-text z-plain">                      /
+</span><span class="z-text z-plain">PageError - PageOpError - SlotError
+</span><span class="z-text z-plain">                      \
+</span><span class="z-text z-plain">                       \-ReadRowError
+</span><span class="z-text z-plain">                        \
+</span><span class="z-text z-plain">                         InsertError
+</span><span class="z-text z-plain">                         ....
+</span></code></pre>
+<p>Additionally, the <code>PageError</code> is the crate's public error type and the only one exposed to the outside world.
+It is a struct containing a <code>PageOpError</code> and an additional <code>PageId</code>. A trait to more easily attach the page id is also implemented:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">PageError</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-storage z-modifier z-rust">pub</span><span class="z-punctuation z-definition z-modifier-scope z-begin z-rust">(</span><span class="z-storage z-modifier z-rust">crate</span><span class="z-punctuation z-definition z-modifier-scope z-end z-rust">)</span> <span class="z-variable z-other z-member z-rust">page_id</span><span class="z-punctuation z-separator z-type z-rust">:</span> PageId,  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">    <span class="z-storage z-modifier z-rust">pub</span><span class="z-punctuation z-definition z-modifier-scope z-begin z-rust">(</span><span class="z-storage z-modifier z-rust">crate</span><span class="z-punctuation z-definition z-modifier-scope z-end z-rust">)</span> <span class="z-variable z-other z-member z-rust">source</span><span class="z-punctuation z-separator z-type z-rust">:</span> PageOpError,  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-storage z-modifier z-rust">pub</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-other z-rust">crate</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-trait z-rust"><span class="z-storage z-type z-trait z-rust">trait</span> <span class="z-entity z-name z-trait z-rust">WithPageId</span>&lt;T&gt; <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-trait z-rust"><span class="z-meta z-block z-rust">    <span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">with_page_id</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span><span class="z-variable z-parameter z-rust">self</span>, <span class="z-variable z-parameter z-rust">page_id</span><span class="z-punctuation z-separator z-rust">:</span> PageId</span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-meta z-generic z-rust">PageResult<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>T<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span></span><span class="z-punctuation z-terminator z-rust">;</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-trait z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>  
+</span><span class="z-source z-rust">  
+</span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-storage z-type z-impl z-rust">impl</span></span><span class="z-meta z-impl z-rust"><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>T<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span><span class="z-meta z-impl z-rust"> <span class="z-meta z-generic z-rust">WithPageId<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>T<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span> <span class="z-keyword z-other z-rust">for</span></span><span class="z-meta z-impl z-rust"> <span class="z-entity z-name z-impl z-rust">Result</span><span class="z-meta z-generic z-rust"><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>T, PageOpError<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span> </span><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust">    <span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">with_page_id</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span><span class="z-variable z-parameter z-rust">self</span>, <span class="z-variable z-parameter z-rust">page_id</span><span class="z-punctuation z-separator z-rust">:</span> PageId</span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-meta z-generic z-rust">PageResult<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>T<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span> </span><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>  
+</span></span></span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">        <span class="z-variable z-language z-rust">self</span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">map_err</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-meta z-function z-closure z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">|</span></span></span><span class="z-meta z-function z-closure z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-variable z-parameter z-rust">source</span><span class="z-punctuation z-section z-parameters z-end z-rust">|</span></span> </span><span class="z-meta z-function z-closure z-rust">PageError <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span> page_id<span class="z-punctuation z-separator z-rust">,</span> source </span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span>  
+</span></span></span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">    </span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>  
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-impl z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<h4 id="remaining-work">Remaining work</h4>
+<p>At the time of writing this, only the insertion and retrieval of rows has been implemented (besides the header &amp; slot array accessors). I started by taking the Java implementation as-is and translated it to Rust and right now I am trying to improve it by (1) splitting it into more granular and testable chunks, (2) optimizing and improving the overall logic. After that, I will apply the same principle to compaction, deletion &amp; updates.</p>
+<p>Worth noting tho, this only covers heap unsorted pages. The B-tree index pages are a whole other thing that will be tackled separately, but that might be pushed a bit further down the priority list.</p>
+<h2 id="resources">Resources</h2>
+<p>These resources helped inform my understanding of database page architecture:</p>
+<ul>
+<li><a href="https://learn.microsoft.com/en-us/sql/relational-databases/pages-and-extents-architecture-guide?view=sql-server-ver17">Microsoft SQL Server Documentation — Pages and Extents Architecture Guide</a></li>
+<li><strong>Kalen Delaney — Microsoft SQL Server 2012 Internals</strong></li>
+<li><a href="https://www.youtube.com/playlist?list=PLSE8ODhjZXjbj8BMuIrRcacnQh20hmY9g">CMU Intro to databases</a></li>
+</ul>
+
+    
+
+        </section>
+                
+                
+                    
+                        
+                        
+                        
+                    
+                    
+                        
+                        
+                        
+                    
+                
+                
+            <nav class="full-width article-navigation">
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/crates/" aria-label="Prev" aria-describedby="left_title"><span class="arrow">←</span>&nbsp;Prev</a>
+                <p aria-hidden="true" id="left_title">Crates</p></div>
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/maintaining-stable-row-identifiers-during-page-maintenance/" aria-label="Next" aria-describedby="right_title">Next&nbsp;<span class="arrow">→</span></a>
+                <p aria-hidden="true" id="right_title">maintaining stable row identifiers during page maintenance</p></div>
+            </nav>
+        
+        
+
+        
+            
+            
+            
+
+            
+                
+                
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+        
+            
+
+<div id="comments" class="comments"
+
+
+    data-repo="tudor96stani&#x2F;tudor96stani.github.io"
+    data-repo-id="R_kgDOQuOQtQ"
+    data-category="General"
+    data-category-id="DIC_kwDOQuOQtc4C0MyW"
+    
+        data-mapping="pathname"
+    
+    data-strict="0"
+    data-reactions-enabled="1"
+    
+        data-input-position="top"
+    
+    data-light-theme="noborder_light"
+    data-dark-theme="noborder_dark"
+    
+        data-lang="en"
+    
+    data-lazy-loading="true"
+    >
+
+
+
+
+    <script src="https://tudor96stani.com/js/giscus.min.js" async></script>
+
+
+<noscript>You need JavaScript to view the comments.</noscript>
+</div>
+
+        </article>
+</main>
+
+    <div id="button-container">
+        
+        
+            <div id="toc-floating-container">
+                <input type="checkbox" id="toc-toggle" class="toggle"/>
+                <label for="toc-toggle" class="overlay"></label>
+                <label for="toc-toggle" id="toc-button" class="button" title="Toggle Table of Contents">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path d="M414.82-193.094q-18.044 0-30.497-12.32-12.453-12.319-12.453-30.036t12.453-30.086q12.453-12.37 30.497-12.37h392.767q17.237 0 29.927 12.487 12.69 12.486 12.69 30.203 0 17.716-12.69 29.919t-29.927 12.203H414.82Zm0-244.833q-18.044 0-30.497-12.487Q371.87-462.9 371.87-480.45t12.453-29.92q12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.511 12.69 12.512 12.69 29.845 0 17.716-12.69 30.086-12.69 12.37-29.927 12.37H414.82Zm0-245.167q-18.044 0-30.497-12.32t-12.453-30.037q0-17.716 12.453-30.086 12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.486 12.69 12.487 12.69 30.203 0 17.717-12.69 29.92-12.69 12.203-29.927 12.203H414.82ZM189.379-156.681q-32.652 0-55.878-22.829t-23.226-55.731q0-32.549 23.15-55.647 23.151-23.097 55.95-23.097 32.799 0 55.313 23.484 22.515 23.484 22.515 56.246 0 32.212-22.861 54.893-22.861 22.681-54.963 22.681Zm0-245.167q-32.652 0-55.878-23.134-23.226-23.135-23.226-55.623 0-32.487 23.467-55.517t56.12-23.03q32.102 0 54.721 23.288 22.62 23.288 22.62 55.775 0 32.488-22.861 55.364-22.861 22.877-54.963 22.877Zm-.82-244.833q-32.224 0-55.254-23.288-23.03-23.289-23.03-55.623 0-32.333 23.271-55.364 23.272-23.03 55.495-23.03 32.224 0 55.193 23.288 22.969 23.289 22.969 55.622 0 32.334-23.21 55.364-23.21 23.031-55.434 23.031Z"/></svg>
+                </label>
+                <div class="toc-content">
+                    
+
+<div class="toc-container">
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#intro">Intro</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#why-pages">Why pages</a>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#slotted-pages">Slotted pages</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#structure-and-behavior">Structure and behavior</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#header">Header</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#slots">Slots</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#why-slotted-pages">Why slotted pages</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#variable-length-rows">Variable length rows</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#encapsulating-the-details">Encapsulating the details</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#implementation">Implementation</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#java">Java</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#rust">Rust</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#headerref-and-headermut">HeaderRef and HeaderMut</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#slotarrayref-and-slotarraymut">SlotArrayRef and SlotArrayMut</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#page-api">Page API</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#error-handling">Error handling</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#remaining-work">Remaining work</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/#resources">Resources</a>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+                </div>
+            </div>
+        
+
+        
+        <a href="#comments" id="comments-button" class="no-hover-padding" title="Go to the comments section">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+            </a>
+        
+
+        
+        <a href="#" id="top-button" class="no-hover-padding" title="Go to the top of the page">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"/></svg>
+        </a>
+    </div>
+
+
+<span id="copy-success" class="hidden">
+        Copied!
+    </span>
+    <span id="copy-init" class="hidden">
+        Copy code to clipboard
+    </span>
+    <script defer src="https://tudor96stani.com/js/copyCodeToClipboard.min.js"></script>
+
+
+    </div>
+    <footer>
+    <section>
+        <nav class="socials nav-navs"><ul><li>
+                        <a class="nav-links no-hover-padding social" rel="" 
+
+ href="https://tudor96stani.com/atom.xml">
+                        <img loading="lazy" alt="feed" title="feed" src="https://tudor96stani.com/social_icons/rss.svg">
+                        </a>
+                    </li><li class="js"><a class="nav-links no-hover-padding social" href="#" data-encoded-email="Y29udGFjdEB0dWRvcjk2c3RhbmkuY29t"><img loading="lazy" alt="email" title="email" src="https://tudor96stani.com/social_icons/email.svg">
+                            </a>
+                        </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding social" rel=" me" 
+
+ href="https://github.com/tudor96stani">
+                                    <img loading="lazy" alt="github" title="github" src="https://tudor96stani.com/social_icons/github.svg">
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            
+        </nav>
+
+        
+        <nav class="nav-navs">
+        </nav>
+
+        <div class="credits">
+            <small>
+                
+
+                
+                Powered by
+                <a rel="" 
+
+ href="https://www.getzola.org">Zola</a>
+                &amp;
+                <a rel="" 
+
+ href="https://github.com/welpo/tabi">tabi</a>
+
+                •
+                    <a rel="" 
+
+ href="https:&#x2F;&#x2F;github.com&#x2F;tudor96stani&#x2F;trdb-blog">
+                        Site source
+                    </a></small>
+        </div>
+    </section>
+
+    <script src="https://tudor96stani.com/js/decodeMail.min.js" async></script><div id="searchModal" class="search-modal js" role="dialog" aria-labelledby="modalTitle">
+    <h1 id="modalTitle" class="visually-hidden">Search</h1>
+    <div id="modal-content">
+        <div id="searchBar">
+            <div class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                </svg>
+            </div>
+            <input id="searchInput" role="combobox" autocomplete="off" spellcheck="false" aria-expanded="false" aria-controls="results-container" placeholder="Search…"/>
+            <div id="clear-search" class="close-icon interactive-icon" tabindex="0" role="button" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+                </svg>
+            </div>
+        </div>
+        <div id="results-container">
+            <div id="results-info"><span id="zero_results"> No results</span>
+                <span id="one_results"> $NUMBER result</span>
+                <span id="many_results"> $NUMBER results</span><span id="two_results"> $NUMBER results</span>
+                <span id="few_results"> $NUMBER results</span>
+            </div>
+            <div id="results" role="listbox"></div>
+        </div>
+    </div>
+</div>
+</footer>
+
+
+    
+    
+</body>
+
+</html>

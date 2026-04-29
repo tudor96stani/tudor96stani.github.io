@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'self';font-src 'self' data:;img-src 'self' https://* data:;media-src 'self';style-src 'self';frame-src player.vimeo.com https://www.youtube-nocookie.com giscus.app;connect-src 'self' tudor96stani.goatcounter.com/count;script-src 'self' gc.zgo.at  giscus.app 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base" content="https://tudor96stani.com">
+
+    
+    <title>
+Notes on software • Crates</title>
+
+    
+    
+        <link rel="icon" type="image/png" href="https://tudor96stani.com/img/favicon-32x32.png"/>
+    
+    
+
+    
+    
+        
+            
+            
+                
+                    <link rel="alternate" type="application/atom+xml" title="Notes on software - Atom Feed" href="https://tudor96stani.com/atom.xml">
+                
+            
+        
+    
+
+    
+    
+    
+        
+            <link rel="stylesheet" href="https://tudor96stani.com/custom_subset.css?h=0b9535a28bc3d5bf2321">
+        
+    
+
+    
+        <link rel="stylesheet" href="https://tudor96stani.com/main.css?h=3716ab3457d2dd050b3c" />
+
+    <meta name="color-scheme" content="light dark" />
+        <meta name="description" content="Organizing a project of this scale is already difficult - doing it in a new language, where you are not familiar with the idiomatic ways of structuring the project makes it even trickier" />
+        <meta property="og:description" content="Organizing a project of this scale is already difficult - doing it in a new language, where you are not familiar with the idiomatic ways of structuring the project makes it even trickier" />
+
+    
+
+    <meta property="og:title" content="Crates" />
+    <meta property="og:type" content="article" />
+
+    
+<meta property="og:locale" content="en_GB" />
+
+    <meta property="og:url" content="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;crates&#x2F;" /><meta property="og:site_name" content="Notes on software">
+        <noscript><link rel="stylesheet" href="https://tudor96stani.com/no_js.css"/></noscript>
+        <script type="text/javascript" src="https://tudor96stani.com/js/initializeTheme.min.js"></script>
+        <script defer src="https://tudor96stani.com/js/themeSwitcher.min.js"></script>
+
+
+
+
+    
+    
+    <script async
+    
+        data-goatcounter="https://tudor96stani.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"
+        
+    ></script>
+    
+
+
+
+        <script defer src="https://tudor96stani.com/js/searchElasticlunr.min.js?h=3626c0ef99daa745b31e"></script>
+
+        
+    
+</head>
+
+
+<body>
+    <a href="#main-content" id="skip-link">Skip to content</a>
+    <header>
+    <nav class="navbar">
+        <div class="nav-title">
+            <a class="home-title" href="https://tudor96stani.com/">Notes on software</a>
+        </div>
+            <div class="nav-navs">
+                <ul>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/blog/">blog
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/about/">about
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/atom.xml">rss
+                                </a>
+                            </li>
+                        <li class="menu-icons-container">
+                        <ul class="menu-icons-group">
+                            <li class="js menu-icon">
+                                <div role="button" tabindex="0" id="search-button" class="search-icon interactive-icon" title="Click or press $SHORTCUT to open search" aria-label="Click or press $SHORTCUT to open search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                                        <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                                    </svg>
+                                </div>
+                            </li>
+
+                            
+                            
+
+                            <li class="theme-switcher-wrapper js"><div
+        title="Toggle dark&#x2F;light mode"
+        class="theme-switcher"
+        tabindex="0"
+        role="button"
+        aria-label="Toggle dark mode"
+        aria-pressed="false">
+    </div><div
+        title="Reset mode to default"
+        class="theme-resetter arrow"
+        tabindex="0"
+        role="button"
+        aria-hidden="true"
+        aria-label="Reset mode to default">
+    </div>
+
+</li>
+</ul>
+                    </li>
+                </ul>
+            </div>
+        
+    </nav>
+</header>
+
+    <div class="content" id="main-content">
+
+        
+        
+
+
+
+
+
+<main>
+    <article class="h-entry">
+        <h1 class="p-name article-title">
+            Crates
+        </h1>
+        <a class="u-url u-uid" href="https://tudor96stani.com/blog/rusting-a-database/crates/"></a>
+
+        <ul class="meta"><li>By <span class="p-author">Tudor Stanila</span></li><span class="hidden p-author h-card">
+<a rel="author" href="https:&#x2F;&#x2F;tudor96stani.com" class="u-url " title="Tudor Stanila">Tudor Stanila</a>
+</span>
+<li><time class="dt-published" datetime="2025-12-07T13:00:00+01:00"><span class='separator' aria-hidden='true'>•</span>7th Dec 2025</time></li><li title="343 words"><span class='separator' aria-hidden='true'>•</span>2 min read</li>
+        </ul>
+            <p class="p-summary" hidden>Organizing a project of this scale is already difficult - doing it in a new language, where you are not familiar with the idiomatic ways of structuring the project makes it even trickier</p><section class="e-content body">
+    
+<p>One of the things I have found relatively weird in Rust was the way you structure a (larger) project - you have crates, packages, workspaces? Coming from the .NET world with only solutions and projects, it was not super clear from the get-go how to organize this project.</p>
+<p>As with many software projects, the main goals were:</p>
+<ul>
+<li>clear separation between components</li>
+<li>clarity to which component depends on which</li>
+<li>some way of testing each component individually</li>
+<li>(and many more I'm sure)</li>
+</ul>
+<p>The way I see the database project is split into these large chunks:</p>
+<ul>
+<li>a storage engine</li>
+<li>a query execution engine</li>
+<li>a query planner and optimization engine (optionally part of the query engine)</li>
+<li>a front end (parser, binder, etc)</li>
+<li>cross cutting elements (transactions, locks, etc)</li>
+<li>a server component</li>
+<li>a binary to bind them all together</li>
+<li>extra tools: client apps, drivers, etc</li>
+</ul>
+<p>To try to achieve this, I've defined one workspace with the following components:</p>
+<pre class="z-code"><code><span class="z-text z-plain">/trdb // main binary crate for the server. 
+</span><span class="z-text z-plain">/crates
+</span><span class="z-text z-plain">	/storage
+</span><span class="z-text z-plain">		/page // lib 
+</span><span class="z-text z-plain">		/buffer // lib 
+</span><span class="z-text z-plain">		...
+</span><span class="z-text z-plain">		/storage-api // lib - access point into the storage engine
+</span><span class="z-text z-plain">	/execution
+</span><span class="z-text z-plain">		...
+</span><span class="z-text z-plain">		/execution-api // lib - access point into the query exec engine
+</span><span class="z-text z-plain">	/plan
+</span><span class="z-text z-plain">		...
+</span><span class="z-text z-plain">		/plan-api // lib - access point into the plan generator engine
+</span><span class="z-text z-plain">	/front-end
+</span><span class="z-text z-plain">		/parser // lib crate
+</span><span class="z-text z-plain">		/binder // lib crate
+</span><span class="z-text z-plain">		...
+</span><span class="z-text z-plain">		/front-end-api // lib - access point into the front end
+</span><span class="z-text z-plain">	...
+</span><span class="z-text z-plain">	/tools
+</span><span class="z-text z-plain">		/cli-client // binary for the CLI client of the database
+</span><span class="z-text z-plain">		...
+</span></code></pre>
+<p>Except for the main <code>trdb</code> binary crate which is stored at the root level, everything is stored under the <code>crates</code> folder, with subfolders based on the specific component. The <code>trdb</code> crate might also act as the server implementation since it has a library crate inside as well, I have not decided yet.
+The only crates that have been actually created so far are the ones under the <code>storage engine</code>, so the others might get renamed, reorganized, split or merged.</p>
+<p>But the main idea was to separate each major component of the engine into its own folder, where it can be broken down into separate crates if needed, and each component should expose an <code>-api</code> crate that will be the only point of access to that module.</p>
+<p>The reason for breaking them apart into separate crates was mostly from an organizational point of view - I don't particularly like folders with a lot of files/subfolders underneath. I'll have to see if this split was too granular (or maybe too coarse, though I doubt that). As of right now, only part of the <code>page</code> crate is implemented, so only time will tell.</p>
+
+    
+
+        </section>
+                
+                
+                    
+                        
+                        
+                        
+                    
+                    
+                        
+                        
+                        
+                    
+                
+                
+            <nav class="full-width article-navigation">
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/why-rust/" aria-label="Prev" aria-describedby="left_title"><span class="arrow">←</span>&nbsp;Prev</a>
+                <p aria-hidden="true" id="left_title">Why rust</p></div>
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/paging-the-data/" aria-label="Next" aria-describedby="right_title">Next&nbsp;<span class="arrow">→</span></a>
+                <p aria-hidden="true" id="right_title">Paging the data</p></div>
+            </nav>
+        
+        
+
+        
+            
+            
+            
+
+            
+                
+                
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+        
+            
+
+<div id="comments" class="comments"
+
+
+    data-repo="tudor96stani&#x2F;tudor96stani.github.io"
+    data-repo-id="R_kgDOQuOQtQ"
+    data-category="General"
+    data-category-id="DIC_kwDOQuOQtc4C0MyW"
+    
+        data-mapping="pathname"
+    
+    data-strict="0"
+    data-reactions-enabled="1"
+    
+        data-input-position="top"
+    
+    data-light-theme="noborder_light"
+    data-dark-theme="noborder_dark"
+    
+        data-lang="en"
+    
+    data-lazy-loading="true"
+    >
+
+
+
+
+    <script src="https://tudor96stani.com/js/giscus.min.js" async></script>
+
+
+<noscript>You need JavaScript to view the comments.</noscript>
+</div>
+
+        </article>
+</main>
+
+    <div id="button-container">
+        
+        
+
+        
+        <a href="#comments" id="comments-button" class="no-hover-padding" title="Go to the comments section">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+            </a>
+        
+
+        
+        <a href="#" id="top-button" class="no-hover-padding" title="Go to the top of the page">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"/></svg>
+        </a>
+    </div>
+
+
+<span id="copy-success" class="hidden">
+        Copied!
+    </span>
+    <span id="copy-init" class="hidden">
+        Copy code to clipboard
+    </span>
+    <script defer src="https://tudor96stani.com/js/copyCodeToClipboard.min.js"></script>
+
+
+    </div>
+    <footer>
+    <section>
+        <nav class="socials nav-navs"><ul><li>
+                        <a class="nav-links no-hover-padding social" rel="" 
+
+ href="https://tudor96stani.com/atom.xml">
+                        <img loading="lazy" alt="feed" title="feed" src="https://tudor96stani.com/social_icons/rss.svg">
+                        </a>
+                    </li><li class="js"><a class="nav-links no-hover-padding social" href="#" data-encoded-email="Y29udGFjdEB0dWRvcjk2c3RhbmkuY29t"><img loading="lazy" alt="email" title="email" src="https://tudor96stani.com/social_icons/email.svg">
+                            </a>
+                        </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding social" rel=" me" 
+
+ href="https://github.com/tudor96stani">
+                                    <img loading="lazy" alt="github" title="github" src="https://tudor96stani.com/social_icons/github.svg">
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            
+        </nav>
+
+        
+        <nav class="nav-navs">
+        </nav>
+
+        <div class="credits">
+            <small>
+                
+
+                
+                Powered by
+                <a rel="" 
+
+ href="https://www.getzola.org">Zola</a>
+                &amp;
+                <a rel="" 
+
+ href="https://github.com/welpo/tabi">tabi</a>
+
+                •
+                    <a rel="" 
+
+ href="https:&#x2F;&#x2F;github.com&#x2F;tudor96stani&#x2F;trdb-blog">
+                        Site source
+                    </a></small>
+        </div>
+    </section>
+
+    <script src="https://tudor96stani.com/js/decodeMail.min.js" async></script><div id="searchModal" class="search-modal js" role="dialog" aria-labelledby="modalTitle">
+    <h1 id="modalTitle" class="visually-hidden">Search</h1>
+    <div id="modal-content">
+        <div id="searchBar">
+            <div class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                </svg>
+            </div>
+            <input id="searchInput" role="combobox" autocomplete="off" spellcheck="false" aria-expanded="false" aria-controls="results-container" placeholder="Search…"/>
+            <div id="clear-search" class="close-icon interactive-icon" tabindex="0" role="button" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+                </svg>
+            </div>
+        </div>
+        <div id="results-container">
+            <div id="results-info"><span id="zero_results"> No results</span>
+                <span id="one_results"> $NUMBER result</span>
+                <span id="many_results"> $NUMBER results</span><span id="two_results"> $NUMBER results</span>
+                <span id="few_results"> $NUMBER results</span>
+            </div>
+            <div id="results" role="listbox"></div>
+        </div>
+    </div>
+</div>
+</footer>
+
+
+    
+    
+</body>
+
+</html>

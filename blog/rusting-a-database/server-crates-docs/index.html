@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'self';font-src 'self' data:;img-src 'self' https://* data:;media-src 'self';style-src 'self';frame-src player.vimeo.com https://www.youtube-nocookie.com giscus.app;connect-src 'self' tudor96stani.goatcounter.com/count;script-src 'self' gc.zgo.at  giscus.app 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base" content="https://tudor96stani.com">
+
+    
+    <title>
+Notes on software • Server, crates and docs</title>
+
+    
+    
+        <link rel="icon" type="image/png" href="https://tudor96stani.com/img/favicon-32x32.png"/>
+    
+    
+
+    
+    
+        
+            
+            
+                
+                    <link rel="alternate" type="application/atom+xml" title="Notes on software - Atom Feed" href="https://tudor96stani.com/atom.xml">
+                
+            
+        
+    
+
+    
+    
+    
+        
+            <link rel="stylesheet" href="https://tudor96stani.com/custom_subset.css?h=0b9535a28bc3d5bf2321">
+        
+    
+
+    
+        <link rel="stylesheet" href="https://tudor96stani.com/main.css?h=3716ab3457d2dd050b3c" />
+
+    <meta name="color-scheme" content="light dark" />
+        <meta name="description" content="Some updates on the initial server implementation, crate reorganization and docs" />
+        <meta property="og:description" content="Some updates on the initial server implementation, crate reorganization and docs" />
+
+    
+
+    <meta property="og:title" content="Server, crates and docs" />
+    <meta property="og:type" content="article" />
+
+    
+<meta property="og:locale" content="en_GB" />
+
+    <meta property="og:url" content="https:&#x2F;&#x2F;tudor96stani.com&#x2F;blog&#x2F;rusting-a-database&#x2F;server-crates-docs&#x2F;" /><meta property="og:site_name" content="Notes on software">
+        <noscript><link rel="stylesheet" href="https://tudor96stani.com/no_js.css"/></noscript>
+        <script type="text/javascript" src="https://tudor96stani.com/js/initializeTheme.min.js"></script>
+        <script defer src="https://tudor96stani.com/js/themeSwitcher.min.js"></script>
+
+
+
+
+    
+    
+    <script async
+    
+        data-goatcounter="https://tudor96stani.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"
+        
+    ></script>
+    
+
+
+
+        <script defer src="https://tudor96stani.com/js/searchElasticlunr.min.js?h=3626c0ef99daa745b31e"></script>
+
+        
+    
+</head>
+
+
+<body>
+    <a href="#main-content" id="skip-link">Skip to content</a>
+    <header>
+    <nav class="navbar">
+        <div class="nav-title">
+            <a class="home-title" href="https://tudor96stani.com/">Notes on software</a>
+        </div>
+            <div class="nav-navs">
+                <ul>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/blog/">blog
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/about/">about
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/atom.xml">rss
+                                </a>
+                            </li>
+                        <li class="menu-icons-container">
+                        <ul class="menu-icons-group">
+                            <li class="js menu-icon">
+                                <div role="button" tabindex="0" id="search-button" class="search-icon interactive-icon" title="Click or press $SHORTCUT to open search" aria-label="Click or press $SHORTCUT to open search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                                        <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                                    </svg>
+                                </div>
+                            </li>
+
+                            
+                            
+
+                            <li class="theme-switcher-wrapper js"><div
+        title="Toggle dark&#x2F;light mode"
+        class="theme-switcher"
+        tabindex="0"
+        role="button"
+        aria-label="Toggle dark mode"
+        aria-pressed="false">
+    </div><div
+        title="Reset mode to default"
+        class="theme-resetter arrow"
+        tabindex="0"
+        role="button"
+        aria-hidden="true"
+        aria-label="Reset mode to default">
+    </div>
+
+</li>
+</ul>
+                    </li>
+                </ul>
+            </div>
+        
+    </nav>
+</header>
+
+    <div class="content" id="main-content">
+
+        
+        
+
+
+
+
+
+<main>
+    <article class="h-entry">
+        <h1 class="p-name article-title">
+            Server, crates and docs
+        </h1>
+        <a class="u-url u-uid" href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/"></a>
+
+        <ul class="meta"><li>By <span class="p-author">Tudor Stanila</span></li><span class="hidden p-author h-card">
+<a rel="author" href="https:&#x2F;&#x2F;tudor96stani.com" class="u-url " title="Tudor Stanila">Tudor Stanila</a>
+</span>
+<li><time class="dt-published" datetime="2026-04-29T19:00:00+02:00"><span class='separator' aria-hidden='true'>•</span>29th Apr 2026</time></li><li title="1125 words"><span class='separator' aria-hidden='true'>•</span>6 min read</li>
+        </ul>
+            
+
+<div class="toc-container">
+    
+        <h3>Table of Contents</h3>
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#server-client">Server - client</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#server">Server</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#high-level">High level</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#what-works-right-now">What works right now</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#what-is-next">What is next</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#client">Client</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#next-steps">Next steps</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#crates">Crates</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#docs">Docs</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#backlog-and-board">Backlog and board</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+        
+            <p class="p-summary" hidden>Some updates on the initial server implementation, crate reorganization and docs</p><section class="e-content body">
+    
+<p>As I've had a pretty busy period, I haven't had the chance to post anything new here, and I only managed to get a few things done on the actual coding side - I will cover them here.</p>
+<h1 id="server-client">Server - client</h1>
+<p>As the buffer implementation was thread safe (I hope!) from the beginning, I decided to avoid going the same route of implementing the whole thing as a single executable, only to have to split it into client and server later on.
+Therefore, I created a second executable for the database client (a CLI app) and implemented a TCP server on the main binary.</p>
+<h2 id="server">Server</h2>
+<h3 id="high-level">High level</h3>
+<p>The main idea behind the server implementation is the following: the app will use <code>tokio</code> threads to asynchronously communicate via the socket with the client - this allows us to yield threads back to the pool as we are waiting for things like network.
+The more problematic area is actual query execution:</p>
+<ul>
+<li>we do not want the client thread that accepted the connection to be blocked for the entire duration of the query execution</li>
+<li>we also do not want to sprinkle async through the entire codebase, but unless a long-running operation IS async (e.g. reading from disk), it will block the thread</li>
+<li>we do not want to give full control of the scheduling to the <code>tokio</code> runtime</li>
+</ul>
+<p>To accommodate this, the following implementation was chosen:</p>
+<ul>
+<li>only the handling of client requests is done on the async thread pool from <code>tokio</code></li>
+<li>actual query execution is done on a worker, blocking thread</li>
+<li>we will control the number of concurrent active queries (active meaning being executed) through a fixed size worker thread pool</li>
+<li>we will, however, accept as many client connections/request as possible</li>
+</ul>
+<p>To achieve this, actual query execution is moved to the blocking thread pool from <code>tokio</code>, operation which is guarded by a semaphore.</p>
+<p>The overall flow is the following:</p>
+<ol>
+<li>Server boots up, reads config file (<code>trdb.toml</code>) to determine data directory and buffer size. Also starts a TCP listener</li>
+<li>In a loop, calls <code>accept</code> on the listener and hands off the interaction with the client on a separate <code>tokio</code> thread (async) (actually does a <code>tokio::select!</code> with an additional branch to listen for a shutdown request as well)</li>
+<li>The client handler starts a loop that reads (async) from the socket and prepares the query request - the client can send multiple requests on the same socket</li>
+<li>It attempts to enter the semaphore - if available, acquires a permit, otherwise it waits (done on a <code>tokio::select!</code> as well, listening for a possible shutdown request)</li>
+<li>Once it passes the semaphore, it triggers a <code>spawn_blocking</code> thread to actually execute the query and <code>awaits</code> the result</li>
+<li>After it receives the result, it streams it back to the client.</li>
+</ol>
+<h3 id="what-works-right-now">What works right now</h3>
+<p>While the overall logic of the server is implemented, it only does some very basic things for now:</p>
+<ul>
+<li>creates a page on startup, if it does not exist already on disk</li>
+<li>client handlers expect a single integer to be received</li>
+<li>it generates a row with that value repeated 100 times, inserts it in that given page, then reads it and sends it back</li>
+<li>a background worker is listening for shutdown requests, allowing us to add shutdown logic in the future (flushing buffer, etc)</li>
+<li>added logging as well</li>
+</ul>
+<h3 id="what-is-next">What is next</h3>
+<p>Besides the obvious part of implementing a server that does more than accept an integer (and cleaning up the code which is all dumped in <code>main.rs</code>), some next steps:</p>
+<ul>
+<li>define a TCP protocol for the client-server communication, to allow both inbound requests of queries and outbound responses with the result sets</li>
+<li>extract server related logic elsewhere</li>
+<li>make things more configurable (e.g. port)</li>
+<li>(nice to have) find a way to stream back the results as they arrive (so if the engine produces a total of 100k rows, start sending them 1k by 1k as the engine is still appending new ones to the result set, instead of waiting for it to return all of them at once)</li>
+<li>(nice to have) define a more custom scheduling policy for the worker threads - something towards a cooperative approach where the blocking worker threads can be returned to the pool while they are waiting for I/O.</li>
+</ul>
+<h2 id="client">Client</h2>
+<p>The client app (<code>trdbcmd</code>) is very simple as of right now. It only connects to the server, waits for user input of a number, sends it to the server and prints back the result. Obviously done only for testing purposes, will be expanded.</p>
+<h2 id="next-steps">Next steps</h2>
+<p>While many of the next steps are important, the current implementation allows me to test the things I am working on, so they have been pushed down in priority a bit.</p>
+<h1 id="crates">Crates</h1>
+<p>The other larger thing I have done was to reorganize the crates a bit.</p>
+<p>Initial choice for project structure was to separate each major component (storage engine, query engine, etc.) into separate small crates and define an <code>*-api</code> crate (e.g. <code>storage-api</code>) that acted as the gateway into that component. This might be too complex and overengineered.</p>
+<p>Because of this, I decided to simplify the architecture by doing a single crate/component. Therefore, I grouped all storage related crates into a single one (called <code>storage</code>), adjusted the exposed items, error types, etc. This seems to have made things a bit cleaner.</p>
+<h2 id="docs">Docs</h2>
+<p>These two last items are more maintenance: the first one is around docs:
+I started working on some actual technical docs, which are already behind schedule, as it's often the case with documentation. Will keep updating it as I go though.</p>
+<p>Additionally, I've decided to add my own notes to the repo - the ones I usually take during development (so they might be outdated or raw) - I think they be interesting from a timeline perspective. They can be found in <code>implementation_notes.md</code>. They all have an ID (timestamp) and are pretty much pulled from my notebook unaltered. Since I am also placing them in my main Obsidian vault, they have some links that are not relevant in here.</p>
+<p>I've also added a <code>decision_log.md</code> note in which i extract (from the actual implementation notes) any relevant decision I might make around the design.</p>
+<p>All of them can be found in the repo, under the <a href="https://github.com/tudor96stani/trdb/tree/main/docs">/docs</a> folder.</p>
+<h2 id="backlog-and-board">Backlog and board</h2>
+<p>I've also started defining the backlog of things that needs to be done - for the Java app I used GitHub's Project + Issues, but I did not particularly like it. For this one, I've created an Azure DevOps board (private) in which I transferred the backlog, organized it a bit.
+I still need to migrate the features from the Java board, right now I only have work items to reach feature parity.</p>
+
+    
+
+        </section>
+                
+                
+                    
+                        
+                        
+                        
+                    
+                    
+                
+                
+            <nav class="full-width article-navigation">
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/storage-manager-the-buffer/" aria-label="Prev" aria-describedby="left_title"><span class="arrow">←</span>&nbsp;Prev</a>
+                <p aria-hidden="true" id="left_title">Storage manager - the buffer</p></div>
+                <div></div>
+            </nav>
+        
+        
+
+        
+            
+            
+            
+
+            
+                
+                
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+        
+            
+
+<div id="comments" class="comments"
+
+
+    data-repo="tudor96stani&#x2F;tudor96stani.github.io"
+    data-repo-id="R_kgDOQuOQtQ"
+    data-category="General"
+    data-category-id="DIC_kwDOQuOQtc4C0MyW"
+    
+        data-mapping="pathname"
+    
+    data-strict="0"
+    data-reactions-enabled="1"
+    
+        data-input-position="top"
+    
+    data-light-theme="noborder_light"
+    data-dark-theme="noborder_dark"
+    
+        data-lang="en"
+    
+    data-lazy-loading="true"
+    >
+
+
+
+
+    <script src="https://tudor96stani.com/js/giscus.min.js" async></script>
+
+
+<noscript>You need JavaScript to view the comments.</noscript>
+</div>
+
+        </article>
+</main>
+
+    <div id="button-container">
+        
+        
+            <div id="toc-floating-container">
+                <input type="checkbox" id="toc-toggle" class="toggle"/>
+                <label for="toc-toggle" class="overlay"></label>
+                <label for="toc-toggle" id="toc-button" class="button" title="Toggle Table of Contents">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path d="M414.82-193.094q-18.044 0-30.497-12.32-12.453-12.319-12.453-30.036t12.453-30.086q12.453-12.37 30.497-12.37h392.767q17.237 0 29.927 12.487 12.69 12.486 12.69 30.203 0 17.716-12.69 29.919t-29.927 12.203H414.82Zm0-244.833q-18.044 0-30.497-12.487Q371.87-462.9 371.87-480.45t12.453-29.92q12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.511 12.69 12.512 12.69 29.845 0 17.716-12.69 30.086-12.69 12.37-29.927 12.37H414.82Zm0-245.167q-18.044 0-30.497-12.32t-12.453-30.037q0-17.716 12.453-30.086 12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.486 12.69 12.487 12.69 30.203 0 17.717-12.69 29.92-12.69 12.203-29.927 12.203H414.82ZM189.379-156.681q-32.652 0-55.878-22.829t-23.226-55.731q0-32.549 23.15-55.647 23.151-23.097 55.95-23.097 32.799 0 55.313 23.484 22.515 23.484 22.515 56.246 0 32.212-22.861 54.893-22.861 22.681-54.963 22.681Zm0-245.167q-32.652 0-55.878-23.134-23.226-23.135-23.226-55.623 0-32.487 23.467-55.517t56.12-23.03q32.102 0 54.721 23.288 22.62 23.288 22.62 55.775 0 32.488-22.861 55.364-22.861 22.877-54.963 22.877Zm-.82-244.833q-32.224 0-55.254-23.288-23.03-23.289-23.03-55.623 0-32.333 23.271-55.364 23.272-23.03 55.495-23.03 32.224 0 55.193 23.288 22.969 23.289 22.969 55.622 0 32.334-23.21 55.364-23.21 23.031-55.434 23.031Z"/></svg>
+                </label>
+                <div class="toc-content">
+                    
+
+<div class="toc-container">
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#server-client">Server - client</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#server">Server</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#high-level">High level</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#what-works-right-now">What works right now</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#what-is-next">What is next</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#client">Client</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#next-steps">Next steps</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#crates">Crates</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#docs">Docs</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/#backlog-and-board">Backlog and board</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+                </div>
+            </div>
+        
+
+        
+        <a href="#comments" id="comments-button" class="no-hover-padding" title="Go to the comments section">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+            </a>
+        
+
+        
+        <a href="#" id="top-button" class="no-hover-padding" title="Go to the top of the page">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"/></svg>
+        </a>
+    </div>
+
+
+<span id="copy-success" class="hidden">
+        Copied!
+    </span>
+    <span id="copy-init" class="hidden">
+        Copy code to clipboard
+    </span>
+    <script defer src="https://tudor96stani.com/js/copyCodeToClipboard.min.js"></script>
+
+
+    </div>
+    <footer>
+    <section>
+        <nav class="socials nav-navs"><ul><li>
+                        <a class="nav-links no-hover-padding social" rel="" 
+
+ href="https://tudor96stani.com/atom.xml">
+                        <img loading="lazy" alt="feed" title="feed" src="https://tudor96stani.com/social_icons/rss.svg">
+                        </a>
+                    </li><li class="js"><a class="nav-links no-hover-padding social" href="#" data-encoded-email="Y29udGFjdEB0dWRvcjk2c3RhbmkuY29t"><img loading="lazy" alt="email" title="email" src="https://tudor96stani.com/social_icons/email.svg">
+                            </a>
+                        </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding social" rel=" me" 
+
+ href="https://github.com/tudor96stani">
+                                    <img loading="lazy" alt="github" title="github" src="https://tudor96stani.com/social_icons/github.svg">
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            
+        </nav>
+
+        
+        <nav class="nav-navs">
+        </nav>
+
+        <div class="credits">
+            <small>
+                
+
+                
+                Powered by
+                <a rel="" 
+
+ href="https://www.getzola.org">Zola</a>
+                &amp;
+                <a rel="" 
+
+ href="https://github.com/welpo/tabi">tabi</a>
+
+                •
+                    <a rel="" 
+
+ href="https:&#x2F;&#x2F;github.com&#x2F;tudor96stani&#x2F;trdb-blog">
+                        Site source
+                    </a></small>
+        </div>
+    </section>
+
+    <script src="https://tudor96stani.com/js/decodeMail.min.js" async></script><div id="searchModal" class="search-modal js" role="dialog" aria-labelledby="modalTitle">
+    <h1 id="modalTitle" class="visually-hidden">Search</h1>
+    <div id="modal-content">
+        <div id="searchBar">
+            <div class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                </svg>
+            </div>
+            <input id="searchInput" role="combobox" autocomplete="off" spellcheck="false" aria-expanded="false" aria-controls="results-container" placeholder="Search…"/>
+            <div id="clear-search" class="close-icon interactive-icon" tabindex="0" role="button" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+                </svg>
+            </div>
+        </div>
+        <div id="results-container">
+            <div id="results-info"><span id="zero_results"> No results</span>
+                <span id="one_results"> $NUMBER result</span>
+                <span id="many_results"> $NUMBER results</span><span id="two_results"> $NUMBER results</span>
+                <span id="few_results"> $NUMBER results</span>
+            </div>
+            <div id="results" role="listbox"></div>
+        </div>
+    </div>
+</div>
+</footer>
+
+
+    
+    
+</body>
+
+</html>
