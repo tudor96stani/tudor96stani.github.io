@@ -1,0 +1,640 @@
+
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8"><meta http-equiv="Content-Security-Policy"
+content="default-src 'self';font-src 'self' data:;img-src 'self' https://* data:;media-src 'self';style-src 'self';frame-src player.vimeo.com https://www.youtube-nocookie.com giscus.app;connect-src &#39;self&#39; tudor96stani.goatcounter.com/count;script-src &#39;self&#39; gc.zgo.at  giscus.app &#39;self&#39;">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="base" content="https://tudor96stani.com">
+
+    
+    <title>Notes on software • Binary rows and AI</title>
+
+    
+    
+        <link rel="icon" type="image/png" href="https://tudor96stani.com/img/favicon-32x32.png"/>
+    
+    
+
+    
+    
+        
+            
+                <link rel="alternate" type="application/atom+xml" title="Notes on software - Atom Feed" href="https://tudor96stani.com/atom.xml">
+            
+        
+    
+
+    
+    
+    
+        
+            <link rel="stylesheet" href="https://tudor96stani.com/custom_subset.css?h=0b9535a28bc3d5bf2321">
+        
+    
+
+    
+        <link rel="stylesheet" href="https://tudor96stani.com/giallo.css?h=3dd4d4e3536ae27829e8" />
+        <link rel="stylesheet" href="https://tudor96stani.com/main.css?h=a0529235e6b8ecc8389e" />
+
+    <meta name="color-scheme" content="light dark" />
+        <meta name="description" content="A quick update on the binary row format I am implementing and the AI-assisted workflow I added to the repo" />
+        <meta property="og:description" content="A quick update on the binary row format I am implementing and the AI-assisted workflow I added to the repo" />
+
+    
+
+    <meta property="og:title" content="Binary rows and AI" />
+    <meta property="og:type" content="article" />
+
+    
+<meta property="og:locale" content="en_GB" />
+
+    <meta property="og:url" content="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/" /><meta property="og:site_name" content="Notes on software">
+        <noscript><link rel="stylesheet" href="https://tudor96stani.com/no_js.css"/></noscript>
+        <script type="text/javascript" src="https://tudor96stani.com/js/initializeTheme.min.js"></script>
+        <script defer src="https://tudor96stani.com/js/themeSwitcher.min.js"></script>
+
+
+
+
+    
+    
+    <script async
+    
+        data-goatcounter="https://tudor96stani.goatcounter.com/count"
+        src="https://gc.zgo.at/count.js"
+        
+    ></script>
+    
+
+
+
+        <script defer src="https://tudor96stani.com/js/searchElasticlunr.min.js?h=28faa8abcfc2ce7469eb"></script>
+
+        
+    <link rel="apple-touch-icon" sizes="180x180" href="https://tudor96stani.com/apple-touch-icon.png"/>
+
+</head>
+
+
+<body dir="ltr">
+    <a href="#main-content" id="skip-link">Skip to content</a>
+    <header>
+    <nav class="navbar">
+        <div class="nav-title">
+            <a class="home-title" href="https://tudor96stani.com/">Notes on software</a>
+        </div>
+            <div class="nav-navs">
+                <ul>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/blog/">blog
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/about/">about
+                                </a>
+                            </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding" href="https://tudor96stani.com/atom.xml">rss
+                                </a>
+                            </li>
+                        <li class="menu-icons-container">
+                        <ul class="menu-icons-group">
+                            <li class="js menu-icon">
+                                <div role="button" tabindex="0" id="search-button" class="search-icon interactive-icon" title="Click or press $SHORTCUT to open search" aria-label="Click or press $SHORTCUT to open search">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                                        <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                                    </svg>
+                                </div>
+                            </li>
+
+                            
+                            
+
+                            <li class="theme-switcher-wrapper js"><div
+        title="Toggle dark/light mode"
+        class="theme-switcher"
+        tabindex="0"
+        role="button"
+        aria-label="Toggle dark mode"
+        aria-pressed="false">
+    </div><div
+        title="Reset mode to default"
+        class="theme-resetter arrow"
+        tabindex="0"
+        role="button"
+        aria-hidden="true"
+        aria-label="Reset mode to default">
+    </div>
+
+</li>
+</ul>
+                    </li>
+                </ul>
+            </div>
+        
+    </nav>
+</header>
+
+    <div class="content" id="main-content">
+
+        
+        
+
+
+
+
+
+<main>
+    <article class="h-entry">
+        <h1 class="p-name article-title">
+            Binary rows and AI
+        </h1>
+        <a class="u-url u-uid" href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/"></a>
+
+        <ul class="meta"><li>By <span class="p-author">Tudor Stanila</span></li><span class="hidden p-author h-card">
+<a rel="author" href="https://tudor96stani.com" class="u-url " title="Tudor Stanila">Tudor Stanila</a>
+</span>
+<li><time class="dt-published" datetime="2026-10-11T13:00:00+01:00"><span class='separator' aria-hidden='true'>•</span>11th Oct 2026</time></li><li title="1573 words"><span class='separator' aria-hidden='true'>•</span>7 min read</li>
+        </ul>
+            
+
+<div class="toc-container">
+    
+        <h3>Table of Contents</h3>
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#binary-rows">Binary rows</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#header">Header</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#integer-storage">Integer storage</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#null-bitmap">NULL bitmap</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#strings-and-offsets">Strings and offsets</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#example">Example</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#why-and-how">Why and how</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#ai-in-the-repo">AI in the repo</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#skills">Skills</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#maintenance">Maintenance</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#requirements-and-testing">Requirements and testing</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+        
+            <p class="p-summary" hidden>A quick update on the binary row format I am implementing and the AI-assisted workflow I added to the repo</p><section class="e-content body"><p>Long time since an update here - I’ve been kept busy by various personal things, so involvement on this project has been lower than usual, but I should be getting more towards normal now.</p>
+<p>While I’ve done a few other things for the db engine, the binary row representation is the most relevant.</p>
+<h1 id="binary-rows">Binary rows</h1>
+<p>Basically as said in previous posts, a data page will store a row/record as a contiguous chunk of bytes. Since the rows are variable length, we need to have an encoding for them as well.</p>
+<p>At its core, the format is compact and pretty clearly organized. We start with a header of course, then we have all the integers (fixed size), then a null bitmap then the string section (which will be variable length). Well, the integer section will be variable as well, depending on the number of integers, but at least we can easily split that one up.</p>
+<p>The overall layout is:</p>
+<pre class="giallo z-code" ><code data-lang="plain"><span class="giallo-l"><span>| header | integers | NULL bitmap | string end offsets | string bytes |</span></span>
+<span class="giallo-l"><span> 6 bytes   4 * I      8 bytes       2 * S               B bytes</span></span></code></pre>
+<p>Here:</p>
+<ul>
+<li><code>I</code> is the number of integer columns</li>
+<li><code>S</code> is the number of string columns</li>
+<li><code>B</code> is the total number of UTF-8 bytes used by all string values</li>
+</ul>
+<h2 id="header">Header</h2>
+<p>The header itself is 6 bytes long and contains three <code>u16</code> values:</p>
+<ul>
+<li>total row size</li>
+<li>integer column count</li>
+<li>string column count</li>
+</ul>
+<p>So the total row size works out to <code>6 + 4 * I + 8 + 2 * S + B</code>.</p>
+<h2 id="integer-storage">Integer storage</h2>
+<p>Integer columns are stored in schema order, starting immediately after the header. The first integer starts at byte offset <code>6</code>, and integer <code>j</code> starts at <code>6 + 4 * j</code>.</p>
+<p>A NULL integer still occupies four bytes and is represented with zero in the payload; the bitmap tells us whether that value is actually NULL or just the integer zero.</p>
+<h2 id="null-bitmap">NULL bitmap</h2>
+<p>The NULL bitmap is a fixed <code>u64</code> value stored right after the integers. Bit 0 represents the first column, bit 1 the second, and so on. A set bit means NULL.</p>
+<p>The fixed-size bitmap is a design choice: it handles up to 64 columns, which is enough for now, and any unused bits stay zero.</p>
+<p>This is the first time I am implementing this concept - the Java version did not support NULL - so idk, things might have implementation wise.
+Though it was fun to do some bit shifting.</p>
+<h2 id="strings-and-offsets">Strings and offsets</h2>
+<p>Strings are stored after the bitmap as a sequence of <em>end offsets</em> and then the UTF-8 payload itself.</p>
+<p>Each string column means one <code>u16</code> in the end offset array. These offsets are relative to the beginning of the string-data section, not to the row itself. To find string <code>j</code>, we look at its end offset and the previous string end offset. The first string starts at offset <code>0</code>.</p>
+<p>This means if the end offsets are <code>[4, 17]</code>, the first string occupies bytes <code>0..4</code>, and the second occupies <code>4..17</code>.</p>
+<p>This is a nice encoding because it lets us find a value without scanning everything before it, while still keeping the data packed together. Other options (e.g. from the Java impl) were to store a pair of shorts for each string - <code>(start, length)</code>. It allowed us not to check the previous entry to locate string <code>j</code>, but it used more space. Decisions decisions.</p>
+<p>NULL and empty strings both contribute zero bytes to the string data section; the bitmap determines which one it is.</p>
+<h2 id="example">Example</h2>
+<p>For a schema like this:</p>
+<pre class="giallo z-code" ><code data-lang="plain"><span class="giallo-l"><span>id    int</span></span>
+<span class="giallo-l"><span>name  string</span></span>
+<span class="giallo-l"><span>age   int</span></span>
+<span class="giallo-l"><span>email string</span></span></code></pre>
+<p>and a row like:</p>
+<pre class="giallo z-code" ><code data-lang="plain"><span class="giallo-l"><span>{ id = 1, name = &quot;Mary&quot;, age = 25, email = &quot;mary@mail.com&quot; }</span></span></code></pre>
+<p>we have two integer columns and two string columns. <code>Mary</code> uses 4 bytes and <code>mary@mail.com</code> uses 13 bytes, so the row total is:</p>
+<pre class="giallo z-code" ><code data-lang="plain"><span class="giallo-l"><span>6 + 8 + 8 + 4 + 17 = 43 bytes</span></span></code></pre>
+<p>The row is laid out like this:</p>
+<pre class="giallo z-code" ><code data-lang="plain"><span class="giallo-l"><span>row-relative range   contents</span></span>
+<span class="giallo-l"><span>0..6                 header: 43, 2, 2</span></span>
+<span class="giallo-l"><span>6..14                integers: 1, 25</span></span>
+<span class="giallo-l"><span>14..22               bitmap: 0</span></span>
+<span class="giallo-l"><span>22..26               string end offsets: 4, 17</span></span>
+<span class="giallo-l"><span>26..43               blob: &quot;Mary&quot; followed by &quot;mary@mail.com&quot;</span></span></code></pre>
+<p>The actual bytes are:</p>
+<pre class="giallo z-code" ><code data-lang="plain"><span class="giallo-l"><span>2B 00 02 00 02 00                         header</span></span>
+<span class="giallo-l"><span>01 00 00 00 19 00 00 00                   integers</span></span>
+<span class="giallo-l"><span>00 00 00 00 00 00 00 00                   bitmap</span></span>
+<span class="giallo-l"><span>04 00 11 00                               string end offsets</span></span>
+<span class="giallo-l"><span>4D 61 72 79                               &quot;Mary&quot;</span></span>
+<span class="giallo-l"><span>6D 61 72 79 40 6D 61 69 6C 2E 63 6F 6D    &quot;mary@mail.com&quot;</span></span></code></pre><h2 id="why-and-how">Why and how</h2>
+<p>The implementation is pretty simple - just some public free floating functions. I kinda like the fact that I can do these - in Java I had to have a static class for these methods.
+Anyways, nothing special - just a function that receives a row &amp; schema and produces a binary array if validation passes. Another one that does the opposite. Schemas are always passed for double checking. Rows by themselves, while they can be read and decoded, do not contain schema information (like column names or anything like that).
+It’s pretty much the same design as I had in Java, with the NULL bitmap added - it worked pretty well there.</p>
+<h1 id="ai-in-the-repo">AI in the repo</h1>
+<p>When I started this project I decided the limit the amount of AI I use - not cause I have anything against it, but because the goal of this project is for me to learn stuff and think things through, so having an agent write the implementation for me would have deprived me of those lessons - topic for another day, but I don’t think you can actually learn something by having an AI do it.</p>
+<p>Anyways, the other goal for the project was to do it more ‘correctly’, as part of the <em>lessons learned</em> from the Java attempt. Some of the top items on this list are: do proper testing and have proper documentation.</p>
+<p>And I still stand by those decisions - they will definitely help down the line.
+But this is also a pet project, done in my (more often than not) limited time. And it turns out that not only do they use a lot of time when there is only one person who has to handle them, but they also leave one quite tired.
+Perhaps that’s one of the reasons I’ve not worked as much on this lately - whenever I opened the project, I was presented with the docs I had been working on previously, still in a draft state, still a long way to go. Or I would look at the method I had just written and realize I would need to spend at least an hour testing it and validating everything.
+Useful, but boring.</p>
+<p>So this weekend I’ve spent some time designing some agent skills to help me with that. The goal is still not to have AI write the code - but the help with the repetitive and uninteresting maintenance tasks, so I <strong>can</strong> write the code myself.</p>
+<h2 id="skills">Skills</h2>
+<h3 id="maintenance">Maintenance</h3>
+<p>Started with some skills that handle technical docs - look at what’s already there, what’s implemented and keep the docs up to date. On demand or scheduled, depending on the situation.
+Also added some reviewer-style skills: mostly looking for gaps in docs, tests, reviewing any drifts in architecture, dependencies, tech debt, etc.
+One can be executed pre-PR: it checks the docs, checks the tests, does a review of the code changes to identify any obvious issues. Nothing fancy.</p>
+<h3 id="requirements-and-testing">Requirements and testing</h3>
+<p>Coming from the regulated field of medical software, I also thought I could apply some of the things from that way of working (simplifying things by making them more complex, I know.)</p>
+<p>Namely, one area that I knew from the beginning I would need, but did not feel like doing was requirements. And once you have those, testing becomes a bit easier (so does implementing).</p>
+<p>So as a next step, I implemented a few other skills with the following goals:</p>
+<ul>
+<li>turning rough ideas into precise requirements</li>
+<li>proposing test cases from those requirements</li>
+<li>reviewing for gaps in the test design</li>
+<li>implementing approved tests without drifting into implementation guessing</li>
+</ul>
+<p>The workflow is based on the following skills:</p>
+<ul>
+<li><code>requirements-engineer</code> grills me about one topic/area (based on docs/what I give as input/domain knowledge) and proposes requirements for the desired implementation, stored in <code>docs/reqs.md</code></li>
+<li><code>blackbox-test-designer</code> produces tests from the requirements without reading the production implementation</li>
+<li><code>whitebox-test-designer</code> looks at the code and proposes edge-case and unhappier flow scenarios</li>
+<li><code>test-implementer</code> turns the approved cases into Rust tests</li>
+</ul>
+<p>None of them run automatically and the transition from each step to the next requires my review &amp; approval.</p>
+<p>I did a small trial run on the <code>Schema</code> component, and it was relatively useful. The grill-me part was probably the most useful and tbh I think the one that will be the most valuable in the future - partially cause it does write the reqs for me, but also cause it forces me to think of various edge cases, flows and other things I might have missed. The reqs it produced were ok - I had to do some tuning, but in the end they were ok. The test cases were also relatively ok - I had to tame it down since it ended up doing way too many for such a simple thing.
+The test cases implementation - I left this one sorta open in the skill, so that depending on the situation I can decide whether I want it to implement them as unit tests, public API tests, fully functional tests.</p>
+<p>This also does not mean I won’t write any more tests or at least provide test cases, but I’ll the the agent handle the large chunk of it - while I still think that they are important, a big chunk of them are relatively mechanic, throwing multiple inputs and checking the outputs. Also writing tests that verify the correct bytes are placed in the correct places in an array is not a super fun experience for me, not matter what.</p>
+<p>Haven’t had the chance yet to determine if these will be useful or not, we’ll have to see.</p>
+<p>During the following weeks I’ll continue both with the implementation of new features and with some regression improvements - updating docs for existing functionality, adding requirements &amp; tests. For as long as I still have credits in Codex I guess.</p>
+
+        </section>
+                
+                    
+                        
+                        
+                        
+                    
+                    
+                
+            <nav class="full-width article-navigation">
+                <div><a href="https://tudor96stani.com/blog/rusting-a-database/server-crates-docs/" aria-label="Prev" aria-describedby="left_title"><span class="arrow">←</span>&nbsp;Prev</a>
+                <p aria-hidden="true" id="left_title">Server, crates and docs</p></div>
+                <div></div>
+            </nav>
+        
+        
+
+        
+            
+            
+            
+
+            
+                
+                
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+            
+            
+            
+
+            
+        
+        
+            
+
+<div id="comments" class="comments"
+
+
+    data-repo="tudor96stani/tudor96stani.github.io"
+    data-repo-id="R_kgDOQuOQtQ"
+    data-category="General"
+    data-category-id="DIC_kwDOQuOQtc4C0MyW"
+    
+        data-mapping="pathname"
+    
+    data-strict="0"
+    data-reactions-enabled="1"
+    
+        data-input-position="top"
+    
+    data-light-theme="noborder_light"
+    data-dark-theme="noborder_dark"
+    
+        data-lang="en"
+    
+    data-lazy-loading="true"
+    >
+
+
+
+
+    <script src="https://tudor96stani.com/js/giscus.min.js" async></script>
+
+
+<noscript>You need JavaScript to view the comments.</noscript>
+</div>
+
+        </article>
+</main>
+    <div id="button-container">
+        
+        
+            <div id="toc-floating-container">
+                <input type="checkbox" id="toc-toggle" class="toggle"/>
+                <label for="toc-toggle" id="toc-button" class="button" title="Toggle Table of Contents">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path d="M414.82-193.094q-18.044 0-30.497-12.32-12.453-12.319-12.453-30.036t12.453-30.086q12.453-12.37 30.497-12.37h392.767q17.237 0 29.927 12.487 12.69 12.486 12.69 30.203 0 17.716-12.69 29.919t-29.927 12.203H414.82Zm0-244.833q-18.044 0-30.497-12.487Q371.87-462.9 371.87-480.45t12.453-29.92q12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.511 12.69 12.512 12.69 29.845 0 17.716-12.69 30.086-12.69 12.37-29.927 12.37H414.82Zm0-245.167q-18.044 0-30.497-12.32t-12.453-30.037q0-17.716 12.453-30.086 12.453-12.369 30.497-12.369h392.767q17.237 0 29.927 12.486 12.69 12.487 12.69 30.203 0 17.717-12.69 29.92-12.69 12.203-29.927 12.203H414.82ZM189.379-156.681q-32.652 0-55.878-22.829t-23.226-55.731q0-32.549 23.15-55.647 23.151-23.097 55.95-23.097 32.799 0 55.313 23.484 22.515 23.484 22.515 56.246 0 32.212-22.861 54.893-22.861 22.681-54.963 22.681Zm0-245.167q-32.652 0-55.878-23.134-23.226-23.135-23.226-55.623 0-32.487 23.467-55.517t56.12-23.03q32.102 0 54.721 23.288 22.62 23.288 22.62 55.775 0 32.488-22.861 55.364-22.861 22.877-54.963 22.877Zm-.82-244.833q-32.224 0-55.254-23.288-23.03-23.289-23.03-55.623 0-32.333 23.271-55.364 23.272-23.03 55.495-23.03 32.224 0 55.193 23.288 22.969 23.289 22.969 55.622 0 32.334-23.21 55.364-23.21 23.031-55.434 23.031Z"/></svg>
+                </label>
+                <div class="toc-content">
+                    
+
+<div class="toc-container">
+    
+
+    <ul>
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#binary-rows">Binary rows</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#header">Header</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#integer-storage">Integer storage</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#null-bitmap">NULL bitmap</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#strings-and-offsets">Strings and offsets</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#example">Example</a>
+                                        
+                                    </li>
+                                
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#why-and-how">Why and how</a>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+            
+            
+                <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#ai-in-the-repo">AI in the repo</a>
+                    
+                        <ul>
+                            
+                                
+                                    <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#skills">Skills</a>
+                                        
+                                            <ul>
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#maintenance">Maintenance</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                                    
+                                                        <li><a href="https://tudor96stani.com/blog/rusting-a-database/binary-rows-and-ai/#requirements-and-testing">Requirements and testing</a>
+                                                            
+                                                        </li>
+                                                    
+                                                
+                                            </ul>
+                                        
+                                    </li>
+                                
+                            
+                        </ul>
+                    
+                </li>
+            
+        
+    </ul>
+</div>
+
+
+                </div>
+            </div>
+        
+
+        
+        <a href="#comments" id="comments-button" class="no-hover-padding" title="Go to the comments section">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd" fill-rule="evenodd"/></svg>
+            </a>
+        
+
+        
+        <a href="#" id="top-button" class="no-hover-padding" title="Go to the top of the page">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z"/></svg>
+        </a>
+    </div>
+
+
+<span id="copy-success" class="hidden">
+        Copied!
+    </span>
+    <span id="copy-init" class="hidden">
+        Copy code to clipboard
+    </span>
+    <script defer src="https://tudor96stani.com/js/copyCodeToClipboard.min.js"></script>
+    </div>
+    <footer>
+    <section>
+        <nav class="socials nav-navs"><ul><li>
+                        <a class="nav-links no-hover-padding social" rel=""  href="https://tudor96stani.com/atom.xml">
+                        <img loading="lazy" alt="feed" title="feed" src="https://tudor96stani.com/social_icons/rss.svg">
+                        </a>
+                    </li><li class="js"><a class="nav-links no-hover-padding social" href="#" data-encoded-email="Y29udGFjdEB0dWRvcjk2c3RhbmkuY29t"><img loading="lazy" alt="email" title="email" src="https://tudor96stani.com/social_icons/email.svg">
+                            </a>
+                        </li>
+                        
+                            <li>
+                                <a class="nav-links no-hover-padding social" rel=" me"  href="https://github.com/tudor96stani">
+                                    <img loading="lazy" alt="github" title="github" src="https://tudor96stani.com/social_icons/github.svg">
+                                </a>
+                            </li>
+                        
+                    
+                </ul>
+            
+        </nav>
+
+        
+        <nav class="nav-navs">
+        </nav>
+
+        <div class="credits">
+            <small>
+                
+
+                
+                Powered by
+                <a rel=""  href="https://www.getzola.org">Zola</a>
+                &
+                <a rel=""  href="https://github.com/welpo/tabi">tabi</a>
+
+                •
+                    <a rel=""  href="https://github.com/tudor96stani/trdb-blog">
+                        Site source
+                    </a></small>
+        </div>
+    </section>
+
+    <script src="https://tudor96stani.com/js/decodeMail.min.js" async></script><div id="searchModal" class="search-modal js" role="dialog" aria-labelledby="modalTitle">
+    <h1 id="modalTitle" class="visually-hidden">Search</h1>
+    <div id="modal-content">
+        <div id="searchBar">
+            <div class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                    <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/>
+                </svg>
+            </div>
+            <input id="searchInput" role="combobox" autocomplete="off" spellcheck="false" aria-expanded="false" aria-controls="results-container" placeholder="Search…"/>
+            <div id="clear-search" class="close-icon interactive-icon" tabindex="0" role="button" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960">
+                <path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/>
+                </svg>
+            </div>
+        </div>
+        <div id="results-container">
+            <div id="results-info"><span id="zero_results"> No results</span>
+                <span id="one_results"> $NUMBER result</span>
+                <span id="many_results"> $NUMBER results</span><span id="two_results"> $NUMBER results</span>
+                <span id="few_results"> $NUMBER results</span>
+            </div>
+            <div id="results" role="listbox"></div>
+        </div>
+    </div>
+</div>
+</footer>
+
+
+    
+    
+</body>
+
+</html>
